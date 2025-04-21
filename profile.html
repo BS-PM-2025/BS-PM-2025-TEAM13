@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profile | EasyReq{% endblock %}
+
+{% block content %}
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+
+<div class="wrapper">
+    <h1>Profile</h1>
+
+    <!-- success message -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="success-message" style="color: #4CAF50; text-align: center; margin-bottom: 10px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" id="imageUploadForm">
+        {% csrf_token %}
+        <div class="profile-pic-container" style="position: relative;">
+            <img id="profileImage"
+                 src="{% if user.profile_pic %}{{ user.profile_pic.url }}{% else %}{% static 'images/profile.png' %}{% endif %}"
+                 alt="Profile Picture" class="profile-pic">
+
+            <label for="profilePicInput" class="edit-icon" style="
+                position: absolute;
+                bottom: 0;
+                right: 10px;
+                background-color: #2e7eff;
+                border-radius: 50%;
+                padding: 8px;
+                cursor: pointer;
+                box-shadow: 0 0 5px rgba(0,0,0,0.2);">
+                {% if user.profile_pic %}
+                    <i class='bx bx-edit' style="color: white; font-size: 18px;"></i>
+                {% else %}
+                    <i class='bx bx-plus' style="color: white; font-size: 18px;"></i>
+                {% endif %}
+            </label>
+
+            <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;">
+        </div>
+    </form>
+
+    <div class="input-box">
+        <label><strong>Username:</strong></label>
+        <input type="text" value="{{ user.username }}" disabled>
+        <i class='bx bxs-user'></i>
+    </div>
+
+    <div class="input-box">
+        <label><strong>Email:</strong></label>
+        <input type="email" value="{{ user.email }}" disabled>
+        <i class='bx bxs-envelope'></i>
+    </div>
+
+    <div class="input-box">
+        <label><strong>Full Name:</strong></label>
+        <input type="text" value="{{ user.first_name }} {{ user.last_name }}" disabled>
+        <i class='bx bxs-user'></i>
+    </div>
+
+    <div class="input-box">
+        <label><strong>Department:</strong></label>
+        <input type="text" value="{{ user.department }}" disabled>
+        <i class='bx bxs-building-house'></i>
+    </div>
+
+    <div class="input-box">
+        <label><strong>Role:</strong></label>
+        <input type="text" value="{{ user.get_role_display }}" disabled>
+        <i class='bx bxs-id-card'></i>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <button type="button" onclick="togglePasswordForm()" class="btn">Change Password</button>
+    </div>
+
+    <form method="POST" id="passwordForm" style="display: none; margin-top: 20px;">
+        {% csrf_token %}
+        <h3 style="text-align:center;">Change Password</h3>
+        <div class="input-box">
+            <input type="password" name="old_password" placeholder="Current Password" required>
+        </div>
+        <div class="input-box">
+            <input type="password" name="new_password1" placeholder="New Password" required>
+        </div>
+        <div class="input-box">
+            <input type="password" name="new_password2" placeholder="Confirm New Password" required>
+        </div>
+        <button type="submit" class="btn">Update Password</button>
+    </form>
+
+    </form>
+</div>
+
+<script>
+    function togglePasswordForm() {
+        const passwordForm = document.getElementById("passwordForm");
+        passwordForm.style.display = (passwordForm.style.display === "none" || passwordForm.style.display === "") ? "block" : "none";
+    }
+
+    function toggleEmailForm() {
+        const emailForm = document.getElementById("emailForm");
+        emailForm.style.display = (emailForm.style.display === "none" || emailForm.style.display === "") ? "block" : "none";
+    }
+
+    const profileInput = document.getElementById('profilePicInput');
+    const image = document.getElementById('profileImage');
+    const form = document.getElementById('imageUploadForm');
+
+    profileInput.addEventListener('change', function () {
+        if (this.files.length > 0) {
+            const formData = new FormData(form);
+            fetch("{% url 'profile' %}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    image.src = URL.createObjectURL(this.files[0]);
+                    alert("Profile picture updated successfully!");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Something went wrong.");
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -74,3 +74,9 @@ def profile_view(request):
                     messages.error(request, error)
         return redirect('profile')
     return render(request, 'profile.html', {'user': user})
+
+@login_required
+def logout_view(request):
+    logout(request)
+    return HttpResponseRedirect("/Website/login")
+

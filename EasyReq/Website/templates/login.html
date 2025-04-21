@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}login | EasyReq{% endblock %}
+
+{% block content %}
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <div class="wrapper">
+        <h1>Login</h1>
+         <h4>Welcome to EasyReq</h4>
+
+        <form action="{% url 'login' %}" method ="post">
+            {% csrf_token %}
+            <!--{{ form }}-->
+            <div class="input-box">
+                <input type="text"
+                name="username"
+                placeholder="username" required>
+                <i class='bx bxs-user'></i>
+            </div>
+
+            <div class="input-box">
+                <input type="password"
+                name="password"
+                placeholder="password" required>
+                <i class='bx bxs-lock-alt' ></i>
+            </div>
+
+            <button class="btn">Login</button>
+        </form>
+
+        <div class="bottom-links">
+            <div class="forgot-link">
+                <p><a href="/Website/reset_password/">Forgot Password?</a></p>
+            </div>
+
+            <div class="register-link">
+                <p>Don't have an account? <a href="/Website/register/">Register</a></p>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'js/login.js' %}"></script>
+
+{% endblock %}

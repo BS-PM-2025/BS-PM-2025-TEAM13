@@ -1,0 +1,44 @@
+from django.http import HttpResponseRedirect
+from django.shortcuts import render, redirect
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.views.generic import CreateView
+from .models import User
+from .forms import RegistrationForm
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
+from django.shortcuts import render
+
+def home(request):
+    return render(request, 'home.html', {'user': request.user})
+
+def register_view(request):
+    if request.method == "POST":
+        form = RegistrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            user = form.save(commit=False)
+            if not user.profile_pic:
+                user.profile_pic = 'images/profile.png'
+            user.save()
+            return redirect("/Website/login")
+    else:
+        form = RegistrationForm()
+    return render(request, 'register.html', {"form": form})
+
+class Registration(CreateView):
+    model = User
+    form_class = RegistrationForm
+    template_name = 'register.html'
+
+    def form_valid(self, form):
+        user = form.save()
+        login(self.request, user)
+        return redirect('/Website/home/')
+
+
+
+

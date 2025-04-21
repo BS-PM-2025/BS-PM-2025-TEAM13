@@ -39,6 +39,19 @@ class Registration(CreateView):
         login(self.request, user)
         return redirect('/Website/home/')
 
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("/Website/home")
+    return render(request, 'login.html')
+    
+def login_request(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
 
 
 

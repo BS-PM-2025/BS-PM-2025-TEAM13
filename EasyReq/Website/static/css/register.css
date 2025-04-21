@@ -1,0 +1,254 @@
+*{
+    margin:0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+body{
+    display:flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: url('https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/31cc46a4-9738-4450-9732-20400cf327a3/deak14r-71e5bb94-e36f-43bd-942b-8b9e8947af46.jpg/v1/fill/w_1192,h_670,q_70,strp/purple_mountains_by_knoeodl_deak14r-pre.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzIwIiwicGF0aCI6IlwvZlwvMzFjYzQ2YTQtOTczOC00NDUwLTk3MzItMjA0MDBjZjMyN2EzXC9kZWFrMTRyLTcxZTViYjk0LWUzNmYtNDNiZC05NDJiLThiOWU4OTQ3YWY0Ni5qcGciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.Fj_E7Vy54BHDC4YYkgKcWpQ_DwsVKKIvoc4Y_6qAAbE') no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+
+.wrapper{
+    width: 420px;
+    background: transparent;
+    border: 2px solid rgba(255,255,255,.2);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 10px rgba(0,0,0,.2);
+    color:#fff;
+    border-radius: 10px;
+    padding: 30px 40px;
+    max-height: 80vh;
+    overflow-y:scroll;
+}
+
+.wrapper h1{
+    font-size: 36px;
+    text-align: center;
+}
+
+.wrapper .input-box{
+    position: relative;
+    width:100%;
+    height: 45px;
+    margin:25px 0;
+}
+
+.input-box input{
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    border: 2px solid rgba(255,255,255,.2);
+    border-radius: 40px;
+    font-size: 16px;
+    color:#fff;
+    padding: 20px 45px 20px 20px;
+}
+
+.input-box imput ::placeholder{
+    color:#fff;
+}
+
+.input-box i {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: #fff;
+    cursor: pointer;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 10;
+}
+
+.input-box {
+    position: relative;
+    width: 100%;
+    height: 50px;
+    margin: 30px 0;
+}
+
+.wrapper .forgot-link{
+    display: flex;
+    justify-content: space-between;
+    font-size: 14.5px;
+}
+
+.forgot-link a{
+    color: #fff;
+    text-decoration: none;
+}
+
+.forgot-link a:hover{
+    text-decoration: underline;
+}
+
+.wrapper .btn{
+    width: 100%;
+    height: 45px;
+    background: #fff;
+    border:none;
+    outline: none;
+    border-radius: 40px;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    font-weight: 600;
+    margin-top: 20px;
+}
+
+.wrapper .register-link{
+    font-size: 14.5px;
+    text-align: center;
+    margin:20px 0 15px;
+}
+
+.register-link a{
+    color:#fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.register-link a:hover{
+    text-decoration: underline;
+}
+
+.bottom-links{
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #fff;
+}
+
+.select-box {
+    width: 100%;
+    height: 50px;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
+    color: #fff;
+    padding: 0 20px;
+    font-size: 16px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='20' width='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><polygon points='0,0 20,0 10,10'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 12px;
+}
+
+.select-box option {
+    color: #000;
+    background-color: #fff;
+}
+
+
+select option[disabled] {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+select.select-box {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+
+.bottom-links a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.bottom-links a:hover {
+    text-decoration: underline;
+}
+
+.password-requirements {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    direction: rtl;
+}
+
+.password-requirements p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    text-align: center;
+}
+
+.password-requirements ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.password-requirements li {
+    margin: 5px 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    padding-right: 20px;
+    position: relative;
+    text-align: center;
+}
+
+.password-requirements li:before {
+    content: "×";
+    color: rgba(255, 100, 100, 0.8);
+    position: absolute;
+    right: 0;
+    font-weight: bold;
+}
+
+.password-requirements li.valid {
+    color: rgba(200, 255, 200, 0.9);
+}
+
+.password-requirements li.valid:before {
+    content: "✓";
+    color: rgba(100, 255, 100, 0.8);
+}
+
+.error-message {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin-top: -20px;
+    margin-bottom: 15px;
+    display: block;
+    text-align: right;
+    direction: rtl;
+}
+
+.password-field-container {
+    position: relative;
+    width: 100%;
+    margin: 30px 0;
+}
+
+.password-toggle-icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    display: block;
+    transform: translateY(-50%);
+    cursor: pointer;
+    z-index: 10;
+}
+
+.password-toggle-icon i {
+    font-size: 20px;
+    color: #fff;
+    display: block;
+}

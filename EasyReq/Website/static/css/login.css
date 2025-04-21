@@ -1,0 +1,115 @@
+*{
+    margin:0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+body{
+    display:flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: url('https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/31cc46a4-9738-4450-9732-20400cf327a3/deak14r-71e5bb94-e36f-43bd-942b-8b9e8947af46.jpg/v1/fill/w_1192,h_670,q_70,strp/purple_mountains_by_knoeodl_deak14r-pre.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NzIwIiwicGF0aCI6IlwvZlwvMzFjYzQ2YTQtOTczOC00NDUwLTk3MzItMjA0MDBjZjMyN2EzXC9kZWFrMTRyLTcxZTViYjk0LWUzNmYtNDNiZC05NDJiLThiOWU4OTQ3YWY0Ni5qcGciLCJ3aWR0aCI6Ijw9MTI4MCJ9XV0sImF1ZCI6WyJ1cm46c2VydmljZTppbWFnZS5vcGVyYXRpb25zIl19.Fj_E7Vy54BHDC4YYkgKcWpQ_DwsVKKIvoc4Y_6qAAbE') no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+
+.wrapper{
+    width: 420px;
+    background: transparent;
+    border: 2px solid rgba(255,255,255,.2);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 10px rgba(0,0,0,.2);
+    color:#fff;
+    border-radius: 10px;
+    padding: 30px 40px;
+}
+
+.wrapper h1{
+    font-size: 36px;
+    text-align: center;
+}
+
+.wrapper .input-box{
+    position: relative;
+    width:100%;
+    height: 50px;
+    margin:30px 0;
+}
+
+.input-box input{
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border:none;
+    outline: none;
+    border: 2px solid rgba(255,255,255,.2);
+    border-radius: 40px;
+    font-size: 16px;
+    color:#fff;
+    padding: 20px 45px 20px 20px;
+}
+
+.input-box imput ::placeholder{
+    color:#fff;
+}
+
+.input-box i{
+    position: absolute;
+    right:20px;
+    top:50%;
+    transform: translateY(-50%);
+    font-size:20px;
+}
+
+.wrapper .forgot-link{
+    font-size: 14.5px;
+    text-align: center;
+}
+
+.forgot-link a{
+    color: #fff;
+    text-decoration: none;
+}
+
+.forgot-link a:hover{
+    text-decoration: underline;
+}
+
+.wrapper .btn{
+    width: 100%;
+    height: 45px;
+    background: #fff;
+    border:none;
+    outline: none;
+    border-radius: 40px;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    font-weight: 600;
+}
+
+.wrapper .register-link{
+    font-size: 14.5px;
+    text-align: center;
+    margin:20px 0 15px;
+}
+
+.register-link a{
+    color:#fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.register-link a:hover{
+    text-decoration: underline;
+}
+
+.bottom-links{
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #fff;
+}

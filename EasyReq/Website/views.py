@@ -52,8 +52,11 @@ def login_request(request):
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
-
-
+            
+@login_required
+def logout_view(request):
+    logout(request)
+    return HttpResponseRedirect("/Website/login")
 
 @login_required
 def profile_view(request):
@@ -75,8 +78,5 @@ def profile_view(request):
         return redirect('profile')
     return render(request, 'profile.html', {'user': user})
 
-@login_required
-def logout_view(request):
-    logout(request)
-    return HttpResponseRedirect("/Website/login")
+
 

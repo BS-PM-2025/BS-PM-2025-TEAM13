@@ -1,0 +1,1155 @@
+Index: EasyReq/Website/tests.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.test import TestCase\n\n# Create your tests here.\n
+===================================================================
+diff --git a/EasyReq/Website/tests.py b/EasyReq/Website/tests.py
+--- a/EasyReq/Website/tests.py	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/tests.py	(date 1745230326000)
+@@ -1,3 +1,293 @@
+-from django.test import TestCase
++from django.test import TestCase, Client
++from django.urls import reverse
++from django.contrib.auth import get_user_model
++from .models import Department
++from django.core.files.uploadedfile import SimpleUploadedFile
++
++User = get_user_model()
++
++class AuthTests(TestCase):
++    def setUp(self):
++        self.client = Client()
++        self.department = Department.objects.create(name='Test Dept')
++        self.user = User.objects.create_user(
++            username='testuser',
++            password='testpass123*',
++            email='test@example.com',
++            first_name='Test',
++            last_name='User',
++            department=self.department,
++        )
++
++    def test_login_page_renders(self):
++        response = self.client.get(reverse('login'))
++        self.assertEqual(response.status_code, 200)
++        self.assertTemplateUsed(response, 'login.html')
++
++    def test_successful_login_redirects_home(self):
++        response = self.client.post(reverse('login'), {
++            'username': 'testuser',
++            'password': 'testpass123*'
++        }, follow=True)
++        self.assertEqual(response.status_code, 200)
++        self.assertContains(response, 'Welcome')  # מותאם לתבנית שלך
++
++    def test_logout_redirects_to_login(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('logout'), follow=True)
++        self.assertRedirects(response, reverse('login'))
++
++    def test_home_authenticated_access(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('home'))
++        self.assertEqual(response.status_code, 200)
++        self.assertContains(response, self.user.username)
++
++    def test_profile_view_logged_in(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('profile'))
++        self.assertEqual(response.status_code, 200)
++        self.assertTemplateUsed(response, 'profile.html')
++        self.assertContains(response, self.user.email)
++
++    def test_profile_picture_upload(self):
++        self.client.login(username='testuser', password='testpass123*')
++        image = SimpleUploadedFile("avatar.jpg", b"testcontent", content_type="image/jpeg")
++        response = self.client.post(reverse('profile'), {
++            'profile_pic': image
++        }, follow=True)
++        self.assertEqual(response.status_code, 200)
++        self.user.refresh_from_db()
++
++    def test_register_page_renders(self):
++        response = self.client.get(reverse('register'))
++        self.assertEqual(response.status_code, 200)
++        self.assertTemplateUsed(response, 'register.html')
++
++    def test_register_new_user_success(self):
++        response = self.client.post(reverse('register'), {
++            'username': 'newuser',
++            'password1': 'StrongPass123!',
++            'password2': 'StrongPass123!',
++            'email': 'newuser@example.com',
++            'first_name': 'New',
++            'last_name': 'User',
++            'department': self.department.id,
++            'info': 'Student',
++        }, follow=True)
++        self.assertEqual(response.status_code, 200)
++    def test_register_creates_user(self):
++        self.client.post(reverse('register'), {
++            'username': 'student123',
++            'password1': 'StrongPass123!',
++            'password2': 'StrongPass123!',
++            'email': 'student123@example.com',
++            'first_name': 'Student',
++            'last_name': 'Example',
++            'department': self.department.id,
++            'info': 'Student',
++        })
++        self.assertTrue(User.objects.filter(username='testuser').exists())
++    def test_logout_redirects_anonymous(self):
++        response = self.client.get(reverse('logout'))
++        self.assertEqual(response.status_code, 302)
++
++    def test_update_password(self):
++        self.client.login(username='testuser', password='testpass123*')
++        self.client.post(reverse('profile'), {
++            'old_password': 'testpass123*',
++            'new_password1': 'Newpass456@',
++            'new_password2': 'Newpass456@'
++        }, follow=True)
++        self.user.refresh_from_db()
++        self.assertTrue(self.user.check_password('Newpass456@'))
++    def test_register_passwords_mismatch(self):
++        response = self.client.post(reverse('register'), {
++            'username': 'failuser',
++            'password1': 'Password1!',
++            'password2': 'Different1!',
++            'email': 'fail@example.com',
++            'first_name': 'Fail',
++            'last_name': 'User',
++            'department': self.department.id,
++            'info': 'Student',
++        })
++        self.assertEqual(response.status_code, 200)
++        self.assertFalse(User.objects.filter(username='failuser').exists())
++    def test_register_existing_username(self):
++        response = self.client.post(reverse('register'), {
++            'username': 'testuser',  # כבר קיים
++            'password1': 'AnotherPass1!',
++            'password2': 'AnotherPass1!',
++            'email': 'another@example.com',
++            'first_name': 'Dup',
++            'last_name': 'User',
++            'department': self.department.id,
++            'info': 'Student',
++        })
++        self.assertEqual(response.status_code, 200)
++        users = User.objects.filter(username='testuser')
++        self.assertEqual(users.count(), 1)
++    def test_home_redirects_if_not_logged_in(self):
++        response = self.client.get(reverse('home'))
++        self.assertEqual(response.status_code, 200)
++    def test_register_with_profile_picture(self):
++        image = SimpleUploadedFile("avatar.jpg", b"imagecontent", content_type="image/jpeg")
++        response = self.client.post(reverse('register'), {
++            'username': 'withpic',
++            'password1': 'Secure1234!',
++            'password2': 'Secure1234!',
++            'email': 'pic@example.com',
++            'first_name': 'With',
++            'last_name': 'Pic',
++            'department': self.department.id,
++            'info': 'Lecturer',
++            'profile_pic': image,
++        }, follow=True)
++        self.assertEqual(response.status_code, 200)
++
++    def test_login_nonexistent_user(self):
++            response = self.client.post(reverse('login'), {
++                'username': 'notexist',
++                'password': 'DoesntMatter123!'
++            })
++            self.assertEqual(response.status_code, 200)
++            self.assertContains(response, "Login")
++
++    def test_login_invalid_credentials_does_not_authenticate(self):
++            response = self.client.post(reverse('login'), {
++                'username': 'testuser',
++                'password': 'wrongpass123**'
++            })
++            self.assertEqual(response.wsgi_request.user.is_authenticated, False)
++
++    def test_profile_displays_email(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('profile'))
++        self.assertContains(response, self.user.email)
++
++    def test_profile_displays_username(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('profile'))
++        self.assertContains(response, self.user.username)
++
++    def test_register_missing_email(self):
++        response = self.client.post(reverse('register'), {
++            'username': 'missingemail',
++            'password1': 'StrongPass123!',
++            'password2': 'StrongPass123!',
++            'first_name': 'No',
++            'last_name': 'Email',
++            'department': self.department.id,
++            'info': 'Student',
++        })
++        self.assertEqual(response.status_code, 200)
++        self.assertFalse(User.objects.filter(username='missingemail').exists())
++
++    def test_register_user_role(self):
++        self.client.post(reverse('register'), {
++            'username': 'studentuser',
++            'password1': 'RoleCheck123!',
++            'password2': 'RoleCheck123!',
++            'email': 'rolecheck@example.com',
++            'first_name': 'Student',
++            'last_name': 'Check',
++            'department': self.department.id,
++            'info': 'Test info',
++            'role': 0,  # Student
++        }, follow=True)
++
++        user = User.objects.get(username='studentuser')
++        self.assertEqual(user.role, 0)
++
++    def test_register_user_role(self):
++        self.client.post(reverse('register'), {
++            'username': 'studentuser',
++            'password1': 'RoleCheck123!',
++            'password2': 'RoleCheck123!',
++            'email': 'rolecheck@example.com',
++            'first_name': 'Student',
++            'last_name': 'Check',
++            'department': self.department.id,
++            'info': 'Test info',
++            'role': 0,  # Student
++        }, follow=True)
++
++        user = User.objects.get(username='testuser')
++        self.assertEqual(user.role, 0)
++
++    def test_home_template_used(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('home'))
++        self.assertTemplateUsed(response, 'home.html')
++
++    def test_register_with_duplicate_username_fails(self):
++        response = self.client.post(reverse('register'), {
++            'username': 'testuser',  # כבר קיים
++            'password1': 'NewPass123!',
++            'password2': 'NewPass123!',
++            'email': 'newemail@example.com',
++            'first_name': 'Dup',
++            'last_name': 'User',
++            'department': self.department.id,
++            'info': 'Student',
++        })
++        self.assertEqual(response.status_code, 200)
++        self.assertEqual(User.objects.filter(username='testuser').count(), 1)
++
++    def test_uploaded_profile_picture_is_saved(self):
++        self.client.login(username='testuser', password='testpass123*')
++        image = SimpleUploadedFile("photo.jpg", b"filedata", content_type="image/jpeg")
++        self.client.post(reverse('profile'), {
++            'profile_pic': image
++        }, follow=True)
++
++        self.user.refresh_from_db()
++        self.assertTrue(self.user.profile_pic.name.startswith('profile_pics/'))
+ 
+-# Create your tests here.
++    def test_login_invalid_password(self):
++        response = self.client.post(reverse('login'), {
++            'username': 'testuser',
++            'password': 'wrongpass'
++        })
++        self.assertEqual(response.status_code, 200)
++        self.assertFalse(response.wsgi_request.user.is_authenticated)
++
++    def test_logout_redirect_status(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('logout'))
++        self.assertEqual(response.status_code, 302)
++
++    def test_profile_template_contains_full_name(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('profile'))
++        full_name = f"{self.user.first_name} {self.user.last_name}"
++        self.assertContains(response, full_name)
++
++    def test_home_page_contains_username(self):
++        self.client.login(username='testuser', password='testpass123*')
++        response = self.client.get(reverse('home'))
++        self.assertContains(response, 'testuser')
++    def test_register_fails_on_missing_fields(self):
++        response = self.client.post(reverse('register'), {
++            'username': '',
++            'password1': 'Pass123!@#',
++            'password2': 'Pass123!@#',
++            'email': '',
++        })
++        self.assertEqual(response.status_code, 200)
++        self.assertFalse(User.objects.filter(username='').exists())
++
++    def test_register_fails_on_invalid_email(self):
++        response = self.client.post(reverse('register'), {
++            'username': 'bademailuser',
++            'password1': 'Valid123@',
++            'password2': 'Valid123@',
++            'email': 'notanemail',
++            'first_name': 'Bad',
++            'last_name': 'Email',
++            'department': self.department.id,
++            'info': 'Test',
++        })
++        self.assertEqual(response.status_code, 200)
++        self.assertFalse(User.objects.filter(username='bademailuser').exists())
+Index: EasyReq/Website/views.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.http import HttpResponseRedirect\nfrom django.shortcuts import render, redirect\nfrom django.contrib.auth.forms import AuthenticationForm\nfrom django.contrib.auth import login, logout, authenticate\nfrom django.contrib.auth.decorators import login_required\nfrom django.contrib import messages\nfrom django.views.generic import CreateView\nfrom .models import User\nfrom .forms import RegistrationForm\n\ndef home(request):\n    return render(request, 'home.html', {'user': request.user})\n\ndef register_view(request):\n    if request.method == \"POST\":\n        form = RegistrationForm(request.POST)\n        if form.is_valid():\n            form.save()\n            return redirect(\"/Website/login\")\n    else:\n        form = RegistrationForm()\n    return render(request, 'register.html', {\"form\": form})\n\ndef login_view(request):\n    return render(request, 'login.html')\n\ndef login_request(request):\n    if request.method == 'POST':\n        form = AuthenticationForm(request, data=request.POST)\n        if form.is_valid():\n            username = form.cleaned_data.get('username')\n            password = form.cleaned_data.get('password')\n            user = authenticate(username=username, password=password)\n            if user is not None:\n                login(request, user)\n                return HttpResponseRedirect(\"/Website/home\")\n            else:\n                messages.error(request, \"Invalid username or password\")\n        else:\n            messages.error(request, \"Invalid username or password\")\n    return render(request, 'login.html', {'form': AuthenticationForm()})\n\n@login_required\ndef logout_view(request):\n    logout(request)\n    return HttpResponseRedirect(\"/Website/home\")\n\nclass Registration(CreateView):\n    model = User\n    form_class = RegistrationForm\n    template_name = 'register.html'\n\n    def form_valid(self, form):\n        user = form.save()\n        login(self.request, user)\n        return redirect('/website/home/')\n
+===================================================================
+diff --git a/EasyReq/Website/views.py b/EasyReq/Website/views.py
+--- a/EasyReq/Website/views.py	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/views.py	(date 1745226814000)
+@@ -7,24 +7,36 @@
+ from django.views.generic import CreateView
+ from .models import User
+ from .forms import RegistrationForm
+-
++from django.shortcuts import render
++from django.http import JsonResponse
++from django.contrib.auth import update_session_auth_hash
++from django.contrib.auth.forms import PasswordChangeForm
++from django.shortcuts import render
+ def home(request):
+     return render(request, 'home.html', {'user': request.user})
+ 
+ def register_view(request):
+     if request.method == "POST":
+-        form = RegistrationForm(request.POST)
++        form = RegistrationForm(request.POST, request.FILES)
+         if form.is_valid():
+-            form.save()
++            user = form.save(commit=False)
++            if not user.profile_pic:
++                user.profile_pic = 'images/profile.png'
++            user.save()
+             return redirect("/Website/login")
+     else:
+         form = RegistrationForm()
+     return render(request, 'register.html', {"form": form})
+ 
+ def login_view(request):
++    if request.user.is_authenticated:
++        return redirect("/Website/home")
+     return render(request, 'login.html')
+ 
+ def login_request(request):
++    if request.user.is_authenticated:
++        return redirect('home')
++
+     if request.method == 'POST':
+         form = AuthenticationForm(request, data=request.POST)
+         if form.is_valid():
+@@ -43,7 +55,7 @@
+ @login_required
+ def logout_view(request):
+     logout(request)
+-    return HttpResponseRedirect("/Website/home")
++    return HttpResponseRedirect("/Website/login")
+ 
+ class Registration(CreateView):
+     model = User
+@@ -53,4 +65,28 @@
+     def form_valid(self, form):
+         user = form.save()
+         login(self.request, user)
+-        return redirect('/website/home/')
++        return redirect('/Website/home/')
++
++
++@login_required
++def profile_view(request):
++    user = request.user
++
++    if request.method == 'POST':
++        if 'profile_pic' in request.FILES:
++            user.profile_pic = request.FILES['profile_pic']
++            user.save()
++            messages.success(request, "Profile picture updated successfully!")
++
++        if 'old_password' in request.POST:
++            password_form = PasswordChangeForm(user, request.POST)
++            if password_form.is_valid():
++                user = password_form.save()
++                update_session_auth_hash(request, user)
++                messages.success(request, "Password updated successfully!")
++            else:
++                for error in password_form.errors.values():
++                    messages.error(request, error)
++        return redirect('profile')
++
++    return render(request, 'profile.html', {'user': user})
+\ No newline at end of file
+Index: EasyReq/Website/templates/register.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{% block title %}\n    Registration\n{% endblock %}\n\n{% block content %}\n    <h1>Registration</h1>\n    <form action=\"{% url 'register' %}\" method =\"post\">\n        {% csrf_token %}\n        {{ form }}\n        <button>Submit</button>\n    </form>\n{% endblock %}
+===================================================================
+diff --git a/EasyReq/Website/templates/register.html b/EasyReq/Website/templates/register.html
+--- a/EasyReq/Website/templates/register.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/register.html	(date 1745157196000)
+@@ -1,12 +1,101 @@
+-{% block title %}
+-    Registration
+-{% endblock %}
++{% extends 'base.html' %}
++{% load static %}
++
++{% block title %}Register | EasyReq{% endblock %}
+ 
+ {% block content %}
++<link rel="stylesheet" href="{% static 'css/style.css' %}">
++<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
++
++<div class="wrapper">
+     <h1>Registration</h1>
+-    <form action="{% url 'register' %}" method ="post">
++
++    <!-- Profile Picture Upload Styled Circle -->
++    <div class="profile-pic-container">
++        <label for="profile_pic" class="profile-pic-label">
++            <img src="{% static 'images/profile.png' %}" alt="Profile Picture" class="profile-pic" id="preview-pic">
++            <i class='bx bx-plus-circle profile-edit-icon'></i>
++        </label>
++    </div>
++
++    <form action="{% url 'register' %}" method="post" enctype="multipart/form-data">
+         {% csrf_token %}
+-        {{ form }}
+-        <button>Submit</button>
++
++        <input type="file" name="profile_pic" id="profile_pic" accept="image/*" style="display: none;" onchange="previewProfilePicture(event)">
++
++        <div class="input-box">
++            <input type="text" name="username" placeholder="Username" required>
++        </div>
++
++        <div class="input-box">
++            <input type="password" name="password1" id="password1" placeholder="Password" required>
++            <i class='bx bx-lock-alt' id="toggle-password1"></i>
++        </div>
++
++        <div class="password-requirements">
++            <p>The password must include:</p>
++            <ul>
++                <li id="length">At least 8 characters</li>
++                <li id="uppercase">Capital letter (A-Z)</li>
++                <li id="lowercase">Small letter (a-z)</li>
++                <li id="number">Number (0-9)</li>
++                <li id="special">Special character (!@#$%^&*)</li>
++            </ul>
++        </div>
++
++        <div class="input-box">
++            <input type="password" name="password2" id="password2" placeholder="Password confirmation" required>
++            <i class='bx bx-lock-alt' id="toggle-password2"></i>
++        </div>
++        <span id="password-match-error" class="error-message" style="display: none;">The passwords do not match</span>
++
++        <div class="input-box">
++            <input type="text" name="first_name" placeholder="First Name" required>
++            <i class='bx bx-id-card'></i>
++        </div>
++
++        <div class="input-box">
++            <input type="text" name="last_name" placeholder="Last Name" required>
++            <i class='bx bx-id-card'></i>
++        </div>
++
++        <select name="role" class="select-box" required>
++            <option value="" disabled selected>Role</option>
++            <option value="0">Student</option>
++            <option value="1">Lecturer</option>
++            <option value="2">Staff</option>
++            <option value="3">Deanery</option>
++        </select>
++
++        <div class="input-box">
++            <input type="email" name="email" placeholder="Email" required>
++            <i class='bx bx-envelope'></i>
++        </div>
++
++        <select name="department" class="select-box" required>
++            <option value="" disabled selected>Department</option>
++            <option value="1">Software Engineering</option>
++        </select>
++
++        <button type="submit" class="btn">Register</button>
+     </form>
+-{% endblock %}
+\ No newline at end of file
++
++    <div class="bottom-links">
++        <a href="{% url 'login' %}">Return to login page</a>
++    </div>
++</div>
++
++<!-- Preview JS -->
++<script>
++    function previewProfilePicture(event) {
++        const reader = new FileReader();
++        reader.onload = function () {
++            const output = document.getElementById('preview-pic');
++            output.src = reader.result;
++        };
++        reader.readAsDataURL(event.target.files[0]);
++    }
++</script>
++
++<script src="{% static 'js/password_validation.js' %}"></script>
++{% endblock %}
+Index: EasyReq/Website/forms.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.contrib.auth.forms import UserCreationForm\nfrom django.contrib.auth.hashers import make_password\nfrom django.db import transaction\nfrom django import forms\nfrom pkg_resources import require\n\nfrom .models import User, Department\n\n\nclass RegistrationForm(UserCreationForm):\n    first_name = forms.CharField(required=True)\n    last_name =  forms.CharField(required=True)\n    role = forms.ChoiceField(choices=User.roles)\n    email = forms.CharField(required=True)\n    department = forms.ModelChoiceField(queryset=Department.objects.all(), required=True)\n\n    class Meta(UserCreationForm.Meta):\n        model = User\n\n    @transaction.atomic\n    def save(self, commit=True):\n        user = super().save(commit=False)\n        user.role = self.cleaned_data.get('role')\n        user.first_name = self.cleaned_data.get('first_name')\n        user.last_name = self.cleaned_data.get('last_name')\n        user.email = self.cleaned_data.get('email')\n        user.department = self.cleaned_data.get('department')\n        if commit:\n            user.save()\n        return user\n\n
+===================================================================
+diff --git a/EasyReq/Website/forms.py b/EasyReq/Website/forms.py
+--- a/EasyReq/Website/forms.py	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/forms.py	(date 1745156334000)
+@@ -1,21 +1,21 @@
+ from django.contrib.auth.forms import UserCreationForm
+-from django.contrib.auth.hashers import make_password
+ from django.db import transaction
+ from django import forms
+-from pkg_resources import require
+-
+ from .models import User, Department
+ 
+-
+ class RegistrationForm(UserCreationForm):
+     first_name = forms.CharField(required=True)
+-    last_name =  forms.CharField(required=True)
++    last_name = forms.CharField(required=True)
+     role = forms.ChoiceField(choices=User.roles)
+-    email = forms.CharField(required=True)
++    email = forms.EmailField(required=True)
+     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=True)
++    profile_pic = forms.ImageField(required=False)
+ 
+     class Meta(UserCreationForm.Meta):
+         model = User
++        fields = ['username', 'password1', 'password2',
++                  'first_name', 'last_name', 'role',
++                  'email', 'department', 'profile_pic']
+ 
+     @transaction.atomic
+     def save(self, commit=True):
+@@ -25,7 +25,13 @@
+         user.last_name = self.cleaned_data.get('last_name')
+         user.email = self.cleaned_data.get('email')
+         user.department = self.cleaned_data.get('department')
++
++        profile_pic = self.cleaned_data.get('profile_pic')
++        if profile_pic:
++            user.profile_pic = profile_pic
++        else:
++            user.profile_pic = 'images/profile.png'
++
+         if commit:
+             user.save()
+         return user
+-
+Index: EasyReq/Website/urls.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.urls import path\nfrom . import views\nfrom django.contrib.auth import views as auth_views\n\nurlpatterns = [\n    path('register/', views.Registration.as_view(), name = 'register'),\n    path('login/', views.login_request, name = 'login'),\n    path('home/', views.home, name = 'home'),\n    path('logout/', views.logout_view, name= 'logout'),\n    path('reset_password/', auth_views.PasswordResetView.as_view(template_name=\"password_reset.html\"),\n          name=\"reset_password\"),\n    path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name=\"password_reset_sent.html\"),\n          name=\"password_reset_done\"),\n    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view\n         (template_name=\"password_reset_form.html\"), name=\"password_reset_confirm\"),\n    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view\n         (template_name=\"password_reset_done.html\"), name= \"password_reset_complete\"),\n\n]
+===================================================================
+diff --git a/EasyReq/Website/urls.py b/EasyReq/Website/urls.py
+--- a/EasyReq/Website/urls.py	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/urls.py	(date 1745154774000)
+@@ -1,4 +1,5 @@
+-from django.urls import path
++from django.contrib import admin
++from django.urls import path, include
+ from . import views
+ from django.contrib.auth import views as auth_views
+ 
+@@ -15,5 +16,5 @@
+          (template_name="password_reset_form.html"), name="password_reset_confirm"),
+     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view
+          (template_name="password_reset_done.html"), name= "password_reset_complete"),
+-
++    path('profile/', views.profile_view, name='profile'),
+ ]
+\ No newline at end of file
+Index: EasyReq/Website/templates/login.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{% block title %}\n    User Login\n{% endblock %}\n\n{% block content %}\n    <h1>User Login</h1>\n    <form action=\"{% url 'login' %}\" method =\"post\">\n        {% csrf_token %}\n        {{ form }}\n        <button>Submit</button>\n    </form>\n    <button onclick=\"window.location.href='/Website/reset_password/'\" class=\"btn btn-green\">Forgot Password?</button>\n\n{% endblock %}
+===================================================================
+diff --git a/EasyReq/Website/templates/login.html b/EasyReq/Website/templates/login.html
+--- a/EasyReq/Website/templates/login.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/login.html	(date 1744630868000)
+@@ -1,14 +1,46 @@
+-{% block title %}
+-    User Login
+-{% endblock %}
++{% extends 'base.html' %}
++{% load static %}
++
++{% block title %}login | EasyReq{% endblock %}
+ 
+ {% block content %}
+-    <h1>User Login</h1>
+-    <form action="{% url 'login' %}" method ="post">
+-        {% csrf_token %}
+-        {{ form }}
+-        <button>Submit</button>
+-    </form>
+-    <button onclick="window.location.href='/Website/reset_password/'" class="btn btn-green">Forgot Password?</button>
++    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
++    <link rel="stylesheet" href="{% static 'css/style.css' %}">
++
++    <div class="wrapper">
++        <h1>Login</h1>
++         <h4>Welcome to EasyReq</h4>
++
++        <form action="{% url 'login' %}" method ="post">
++            {% csrf_token %}
++            <!--{{ form }}-->
++            <div class="input-box">
++                <input type="text"
++                name="username"
++                placeholder="username" required>
++                <i class='bx bxs-user'></i>
++            </div>
++
++            <div class="input-box">
++                <input type="password"
++                name="password"
++                placeholder="password" required>
++                <i class='bx bxs-lock-alt' ></i>
++            </div>
++
++            <button class="btn">Login</button>
++        </form>
++
++        <div class="bottom-links">
++            <div class="forgot-link">
++                <p><a href="/Website/reset_password/">Forgot Password?</a></p>
++            </div>
+ 
+-{% endblock %}
+\ No newline at end of file
++            <div class="register-link">
++                <p>Don't have an account? <a href="/Website/register/">Register</a></p>
++            </div>
++        </div>
++    </div>
++    <script src="{% static 'js/login.js' %}"></script>
++
++{% endblock %}
+Index: EasyReq/Website/templates/home.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Home</title>\n</head>\n<body>\n  {% if user.is_authenticated %}\n    <h2>Welcome, {{ user.username }}!</h2>\n    <div class=\"top-bar\">\n        <a href=\"{% url 'logout' %}\">\n        <button>Logout</button></a>\n    </div>\n  {% else %}\n    <h2>Welcome, Guest</h2>\n      <div class=\"top-bar\">\n        <a href=\"{% url 'login' %}\">\n        <button>Login</button></a>\n  {% endif %}\n      </div>\n</body>\n</html>
+===================================================================
+diff --git a/EasyReq/Website/templates/home.html b/EasyReq/Website/templates/home.html
+--- a/EasyReq/Website/templates/home.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/home.html	(date 1745154206000)
+@@ -1,22 +1,21 @@
+-<!DOCTYPE html>
+-<html lang="en">
+-<head>
+-    <meta charset="UTF-8">
+-    <title>Home</title>
+-</head>
+-<body>
+-  {% if user.is_authenticated %}
+-    <h2>Welcome, {{ user.username }}!</h2>
+-    <div class="top-bar">
+-        <a href="{% url 'logout' %}">
+-        <button>Logout</button></a>
+-    </div>
+-  {% else %}
+-    <h2>Welcome, Guest</h2>
+-      <div class="top-bar">
+-        <a href="{% url 'login' %}">
+-        <button>Login</button></a>
+-  {% endif %}
+-      </div>
+-</body>
+-</html>
+\ No newline at end of file
++{% extends 'base.html' %}
++{% load static %}
++
++{% block content %}
++<link rel="stylesheet" href="{% static 'css/style.css' %}">
++<div class="wrapper">
++  <h1>Home</h1>
++    {% if user.is_authenticated %}
++      <h4>Welcome, {{ user.username }}!</h4>
++      <div class="bottom-links">
++        <a href="{% url 'logout' %}" >Logout</a>
++      </div>
++    {% else %}
++      <h2>Welcome, Guest</h2>
++      <div class="bottom-links">
++        <a href="{% url 'login' %}" > go to login page </a>
++      </div>
++    {% endif %}
++</div>
++
++{% endblock %}
+\ No newline at end of file
+Index: EasyReq/Website/templates/password_reset.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{% load static %}\n\n{% block content %}\n<title>Password reset </title>\n<link rel=\"stylesheet\" href=\"{% static 'css/master.css' %}\">\n<link rel=\"stylesheet\" href=\"{% static 'css/styles.css' %}\">\n\n<style>\n    body {\n        display: flex;\n        justify-content: center;\n        align-items: center;\n        height: 100vh;\n        background-color: rgba(255, 255, 255, 0.8); \n        font-family: Calibri, sans-serif;\n        text-align: center; \n    }\n\n    .container {\n        max-width: 400px;\n        padding: 20px;\n        border-radius: 8px;\n        background-color: rgba(255, 255, 255, 0.8); \n        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);\n    }\n\n    h3 {\n        margin-bottom: 10px;\n        color: #333;\n    }\n\n    p {\n        margin-bottom: 20px;\n        color: #666;\n    }\n\n    form {\n        display: flex;\n        flex-direction: column;\n    }\n\n    label {\n        margin-bottom: 5px;\n        color: #333;\n    }\n\n    input[type=\"email\"],\n    input[type=\"submit\"] {\n        padding: 10px;\n        margin-bottom: 15px;\n        border-radius: 5px;\n        border: 1px solid #ccc;\n    }\n\n    input[type=\"submit\"] {\n        background-color: #58a13d;\n        color: white;\n        border: none;\n        cursor: pointer;\n    }\n\n    input[type=\"submit\"]:hover {\n        background-color: #405d27;\n    }\n</style>\n\n<div class=\"container\">\n    <p>Forgot your password?\n        <br>\n            If you wish to reset your password, enter your email.\n            We will email you a password reset link, be sure to check your Spam folder.\n        <br>\n    </p>\n\n    <form method=\"post\">\n        {% csrf_token %}\n        <label for=\"email\">Your email:</label>\n        <input type=\"email\" id=\"email\" name=\"email\" required>\n        <input type=\"Submit\" value=\"Send\">\n    </form>\n</div>\n{% endblock %}
+===================================================================
+diff --git a/EasyReq/Website/templates/password_reset.html b/EasyReq/Website/templates/password_reset.html
+--- a/EasyReq/Website/templates/password_reset.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/password_reset.html	(date 1744630868000)
+@@ -1,82 +1,29 @@
++{% extends 'base.html' %}
+ {% load static %}
+ 
++{% block title %}Password reset | EasyReq{% endblock %}
++
+ {% block content %}
+-<title>Password reset </title>
+-<link rel="stylesheet" href="{% static 'css/master.css' %}">
+-<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+-
+-<style>
+-    body {
+-        display: flex;
+-        justify-content: center;
+-        align-items: center;
+-        height: 100vh;
+-        background-color: rgba(255, 255, 255, 0.8); 
+-        font-family: Calibri, sans-serif;
+-        text-align: center; 
+-    }
+-
+-    .container {
+-        max-width: 400px;
+-        padding: 20px;
+-        border-radius: 8px;
+-        background-color: rgba(255, 255, 255, 0.8); 
+-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+-    }
+-
+-    h3 {
+-        margin-bottom: 10px;
+-        color: #333;
+-    }
+-
+-    p {
+-        margin-bottom: 20px;
+-        color: #666;
+-    }
+-
+-    form {
+-        display: flex;
+-        flex-direction: column;
+-    }
+-
+-    label {
+-        margin-bottom: 5px;
+-        color: #333;
+-    }
+-
+-    input[type="email"],
+-    input[type="submit"] {
+-        padding: 10px;
+-        margin-bottom: 15px;
+-        border-radius: 5px;
+-        border: 1px solid #ccc;
+-    }
+-
+-    input[type="submit"] {
+-        background-color: #58a13d;
+-        color: white;
+-        border: none;
+-        cursor: pointer;
+-    }
+-
+-    input[type="submit"]:hover {
+-        background-color: #405d27;
+-    }
+-</style>
+-
+-<div class="container">
+-    <p>Forgot your password?
+-        <br>
+-            If you wish to reset your password, enter your email.
+-            We will email you a password reset link, be sure to check your Spam folder.
+-        <br>
+-    </p>
++    <link rel="stylesheet" href="{% static 'css/style.css' %}">
++    <div class="wrapper">
++        <div class="text-section">
++            <h1>Forgot Your<br>Password?</h1>
++            <p>
++                We’ll send you a link to reset it.<br>
++                Be sure to check your Spam folder too!
++            </p>
++        </div>
+ 
+-    <form method="post">
+-        {% csrf_token %}
+-        <label for="email">Your email:</label>
+-        <input type="email" id="email" name="email" required>
+-        <input type="Submit" value="Send">
+-    </form>
+-</div>
+-{% endblock %}
+\ No newline at end of file
++        <form method="post">
++            {% csrf_token %}
++            <div class="input-box">
++                <input type="email" id="email" name="email" placeholder="example@gmail.com" required>
++            </div>
++            <input class="btn" type="Submit" value="Send">
++            <div class="bottom-links">
++                <a href="{% url 'login' %}" > Return to login page </a>
++            </div>
++        </form>
++    </div>
++{% endblock %}
++
+Index: EasyReq/Website/templates/password_reset_done.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{% load static %}\n\n{% block extra_css %}\n    <!--<link rel=\"stylesheet\" href=\"{% static 'css/master.css' %}\">\n    <link rel=\"stylesheet\" href=\"{% static 'css/styles.css' %}\"> -->\n    <style>\n        body {\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            height: 100vh;\n            background-color: rgba(255, 255, 255, 0.8); \n            font-family: Calibri, sans-serif;\n            text-align: center; \n        }\n    \n        .container {\n            max-width: 400px;\n            padding: 20px;\n            border-radius: 8px;\n            background-color: rgba(255, 255, 255, 0.8); \n            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);\n        }\n    \n        h3 {\n            margin-bottom: 10px;\n            color: #333;\n        }\n    \n        p {\n            margin-bottom: 20px;\n            color: #666;\n        }\n    \n        form {\n            display: flex;\n            flex-direction: column;\n        }\n    \n        label {\n            margin-bottom: 5px;\n            color: #333;\n        }\n    \n        input[type=\"email\"],\n        input[type=\"submit\"] {\n            padding: 10px;\n            margin-bottom: 15px;\n            border-radius: 5px;\n            border: 1px solid #ccc;\n        }\n    \n        input[type=\"submit\"] {\n            background-color: #58a13d;\n            color: white;\n            border: none;\n            cursor: pointer;\n        }\n    \n        input[type=\"submit\"]:hover {\n            background-color: #405d27;\n        }\n        \n        .btn {\n            display: inline-block;\n            padding: 10px 20px;\n            margin: 10px;\n            font-size: 16px;\n            cursor: pointer;\n            text-decoration: none;\n            color: #fff;\n            background-color: #23672f;\n            border: none;\n            border-radius: 5px;\n        }\n    </style>\n    \n{% endblock %}\n{% block content %}\n    <div class=\"container\">\n        <h3>Password reset completed.</h3>\n        <p>Your password has been updated. You may log in.</p>\n            <br>\n                <a href=\"{% url 'login' %}\" style=\"display: inline-block; padding: 8px 12px; margin: 5px; font-size: 14px; text-decoration: none; color: #fff; background-color: #4caf50; border: 2px solid transparent; border-radius: 3px; cursor: pointer; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;\">Login page</a>\n        </div>\n{% endblock %}\n
+===================================================================
+diff --git a/EasyReq/Website/templates/password_reset_done.html b/EasyReq/Website/templates/password_reset_done.html
+--- a/EasyReq/Website/templates/password_reset_done.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/password_reset_done.html	(date 1744630868000)
+@@ -1,86 +1,14 @@
++{% extends 'base.html' %}
+ {% load static %}
+ 
+-{% block extra_css %}
+-    <!--<link rel="stylesheet" href="{% static 'css/master.css' %}">
+-    <link rel="stylesheet" href="{% static 'css/styles.css' %}"> -->
+-    <style>
+-        body {
+-            display: flex;
+-            justify-content: center;
+-            align-items: center;
+-            height: 100vh;
+-            background-color: rgba(255, 255, 255, 0.8); 
+-            font-family: Calibri, sans-serif;
+-            text-align: center; 
+-        }
+-    
+-        .container {
+-            max-width: 400px;
+-            padding: 20px;
+-            border-radius: 8px;
+-            background-color: rgba(255, 255, 255, 0.8); 
+-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+-        }
+-    
+-        h3 {
+-            margin-bottom: 10px;
+-            color: #333;
+-        }
+-    
+-        p {
+-            margin-bottom: 20px;
+-            color: #666;
+-        }
+-    
+-        form {
+-            display: flex;
+-            flex-direction: column;
+-        }
+-    
+-        label {
+-            margin-bottom: 5px;
+-            color: #333;
+-        }
+-    
+-        input[type="email"],
+-        input[type="submit"] {
+-            padding: 10px;
+-            margin-bottom: 15px;
+-            border-radius: 5px;
+-            border: 1px solid #ccc;
+-        }
+-    
+-        input[type="submit"] {
+-            background-color: #58a13d;
+-            color: white;
+-            border: none;
+-            cursor: pointer;
+-        }
+-    
+-        input[type="submit"]:hover {
+-            background-color: #405d27;
+-        }
+-        
+-        .btn {
+-            display: inline-block;
+-            padding: 10px 20px;
+-            margin: 10px;
+-            font-size: 16px;
+-            cursor: pointer;
+-            text-decoration: none;
+-            color: #fff;
+-            background-color: #23672f;
+-            border: none;
+-            border-radius: 5px;
+-        }
+-    </style>
+-    
+-{% endblock %}
+ {% block content %}
+-    <div class="container">
+-        <h3>Password reset completed.</h3>
+-        <p>Your password has been updated. You may log in.</p>
+-            <br>
+-                <a href="{% url 'login' %}" style="display: inline-block; padding: 8px 12px; margin: 5px; font-size: 14px; text-decoration: none; color: #fff; background-color: #4caf50; border: 2px solid transparent; border-radius: 3px; cursor: pointer; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;">Login page</a>
++    <link rel="stylesheet" href="{% static 'css/style.css' %}">
++    <div class="wrapper">
++        <h3>Password reset completed</h3>
++        <p>Your password has been updated</p>
++        <div class="bottom-links">
++            <a href="{% url 'login' %}" > Return to login page </a>
+         </div>
++    </div>
+ {% endblock %}
++
+Index: EasyReq/Website/templates/password_reset_sent.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{% load static %}\n\n{% block content %}\n<style>\n    body {\n        background-color: rgba(255, 255, 255, 0.8); \n        display: flex;\n        justify-content: center;\n        align-items: center;\n        height: 100vh;\n        font-family: Calibri, sans-serif;\n    }\n\n    .container {\n        max-width: 400px;\n        padding: 20px;\n        border-radius: 8px;\n        background-color: rgba(255, 255, 255, 0.8); \n        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);\n        text-align: center;\n    }\n\n    h3 {\n        margin-bottom: 10px;\n        color: #333;\n    }\n\n    p {\n        margin-bottom: 20px;\n        color: #666;\n    }\n</style>\n\n<div class=\"container\">\n    <h3>Mail sent successfully</h3>\n\n    <p>If the email you gave belongs to a registered user, you should receive it soon.\n        <br>\n    </p>\n\n    <p> If you didn't receive and email, make sure you typed the right email.\n        <br>\n       * Also, check your spam folder *</p>\n    <a href=\"{% url 'login' %}\" style=\"display: inline-block; padding: 8px 12px; margin: 5px; font-size: 14px; text-decoration: none; color: #fff; background-color: #4caf50; border: 2px solid transparent; border-radius: 3px; cursor: pointer; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;\">Return to login page  </a>\n\n</div>\n\n{% endblock %}
+===================================================================
+diff --git a/EasyReq/Website/templates/password_reset_sent.html b/EasyReq/Website/templates/password_reset_sent.html
+--- a/EasyReq/Website/templates/password_reset_sent.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/password_reset_sent.html	(date 1744630868000)
+@@ -1,48 +1,20 @@
++{% extends 'base.html' %}
+ {% load static %}
+ 
+ {% block content %}
+-<style>
+-    body {
+-        background-color: rgba(255, 255, 255, 0.8); 
+-        display: flex;
+-        justify-content: center;
+-        align-items: center;
+-        height: 100vh;
+-        font-family: Calibri, sans-serif;
+-    }
+-
+-    .container {
+-        max-width: 400px;
+-        padding: 20px;
+-        border-radius: 8px;
+-        background-color: rgba(255, 255, 255, 0.8); 
+-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+-        text-align: center;
+-    }
+-
+-    h3 {
+-        margin-bottom: 10px;
+-        color: #333;
+-    }
+-
+-    p {
+-        margin-bottom: 20px;
+-        color: #666;
+-    }
+-</style>
+-
+-<div class="container">
+-    <h3>Mail sent successfully</h3>
++    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
++    <link rel="stylesheet" href="{% static 'css/style.css' %}">
++    <div class="wrapper">
++        <div class="text-section">
++            <h3>Mail sent successfully <i class='bx bx-mail-send'></i></h3><br>
++            <p> If you didn't receive and email,<br> check your spam folder <br>
+ 
+-    <p>If the email you gave belongs to a registered user, you should receive it soon.
+-        <br>
+-    </p>
+-
+-    <p> If you didn't receive and email, make sure you typed the right email.
+-        <br>
+-       * Also, check your spam folder *</p>
+-    <a href="{% url 'login' %}" style="display: inline-block; padding: 8px 12px; margin: 5px; font-size: 14px; text-decoration: none; color: #fff; background-color: #4caf50; border: 2px solid transparent; border-radius: 3px; cursor: pointer; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;">Return to login page  </a>
+-
+-</div>
++            <div class="bottom-links">
++                <a href="{% url 'login' %}" > Return to login page </a>
++            </div>
++        </div>
+ 
+-{% endblock %}
+\ No newline at end of file
++    </div>
++{% endblock %}
++
++
+Index: EasyReq/Website/templates/password_reset_form.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{% load static %}\n\n{% block extra_css %}\n    <link rel=\"stylesheet\" href=\"{% static 'css/master.css' %}\">\n    <link rel=\"stylesheet\" href=\"{% static 'css/styles.css' %}\">\n    <style>\n        body {\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            height: 100vh;\n            background-color: rgba(255, 255, 255, 0.8); \n            font-family: Calibri, sans-serif;\n            text-align: center; \n        }\n    \n        .container {\n            max-width: 400px;\n            padding: 20px;\n            border-radius: 8px;\n            background-color: rgba(255, 255, 255, 0.8); \n            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);\n        }\n    \n        h3 {\n            margin-bottom: 10px;\n            color: #333;\n        }\n    \n        p {\n            margin-bottom: 20px;\n            color: #666;\n        }\n    \n        form {\n            display: flex;\n            flex-direction: column;\n        }\n    \n        label {\n            margin-bottom: 5px;\n            color: #333;\n        }\n    \n        input[type=\"email\"],\n        input[type=\"submit\"] {\n            padding: 10px;\n            margin-bottom: 15px;\n            border-radius: 5px;\n            border: 1px solid #ccc;\n        }\n    \n        input[type=\"submit\"] {\n            background-color: #58a13d;\n            color: white;\n            border: none;\n            cursor: pointer;\n        }\n    \n        input[type=\"submit\"]:hover {\n            background-color: #405d27;\n        }\n        \n        .btn {\n            display: inline-block;\n            padding: 10px 20px;\n            margin: 10px;\n            font-size: 16px;\n            cursor: pointer;\n            text-decoration: none;\n            color: #fff;\n            background-color: #23672f;\n            border: none;\n            border-radius: 5px;\n        }\n    </style>\n{% endblock %}\n{% block content %}\n    <div class=\"container\">\n        <h3>Password reset</h3>\n        <p>Enter your new password, make sure to follow security rules.\n            <br>\n            <form method=\"post\">\n                {% csrf_token %}\n                {{form}}\n                <input type = \"submit\" name =\"Update Password\" value = \"Update password\">\n            </form>\n        </div>\n{% endblock %}\n
+===================================================================
+diff --git a/EasyReq/Website/templates/password_reset_form.html b/EasyReq/Website/templates/password_reset_form.html
+--- a/EasyReq/Website/templates/password_reset_form.html	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/templates/password_reset_form.html	(date 1744630868000)
+@@ -1,89 +1,42 @@
++{% extends 'base.html' %}
+ {% load static %}
+ 
+-{% block extra_css %}
+-    <link rel="stylesheet" href="{% static 'css/master.css' %}">
+-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+-    <style>
+-        body {
+-            display: flex;
+-            justify-content: center;
+-            align-items: center;
+-            height: 100vh;
+-            background-color: rgba(255, 255, 255, 0.8); 
+-            font-family: Calibri, sans-serif;
+-            text-align: center; 
+-        }
+-    
+-        .container {
+-            max-width: 400px;
+-            padding: 20px;
+-            border-radius: 8px;
+-            background-color: rgba(255, 255, 255, 0.8); 
+-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+-        }
+-    
+-        h3 {
+-            margin-bottom: 10px;
+-            color: #333;
+-        }
+-    
+-        p {
+-            margin-bottom: 20px;
+-            color: #666;
+-        }
+-    
+-        form {
+-            display: flex;
+-            flex-direction: column;
+-        }
+-    
+-        label {
+-            margin-bottom: 5px;
+-            color: #333;
+-        }
+-    
+-        input[type="email"],
+-        input[type="submit"] {
+-            padding: 10px;
+-            margin-bottom: 15px;
+-            border-radius: 5px;
+-            border: 1px solid #ccc;
+-        }
+-    
+-        input[type="submit"] {
+-            background-color: #58a13d;
+-            color: white;
+-            border: none;
+-            cursor: pointer;
+-        }
+-    
+-        input[type="submit"]:hover {
+-            background-color: #405d27;
+-        }
+-        
+-        .btn {
+-            display: inline-block;
+-            padding: 10px 20px;
+-            margin: 10px;
+-            font-size: 16px;
+-            cursor: pointer;
+-            text-decoration: none;
+-            color: #fff;
+-            background-color: #23672f;
+-            border: none;
+-            border-radius: 5px;
+-        }
+-    </style>
+-{% endblock %}
+ {% block content %}
+-    <div class="container">
++    <link rel="stylesheet" href="{% static 'css/style.css' %}">
++    <div class="wrapper">
+         <h3>Password reset</h3>
+-        <p>Enter your new password, make sure to follow security rules.
+             <br>
+             <form method="post">
+                 {% csrf_token %}
+-                {{form}}
+-                <input type = "submit" name ="Update Password" value = "Update password">
++                <!-- {{form}} -->
++
++                <div class="input-box">
++                    <input type="password"
++                    name="new_password1"
++                    id="new_password1"
++                    placeholder="New Password" required>
++                    <i class='bx bxs-show' id="toggle-new-password1"></i>
++                </div>
++
++                <div class="password-requirements">
++                    <p>The password must include:</p>
++                    <ul>
++                    <li id="length">At least 8 characters</li>
++                    <li id="uppercase">Capital letter (A-Z)</li>
++                    <li id="lowercase">Small letter (a-z)</li>
++                    <li id="number">number (0-9)</li>
++                    <li id="special">special character (!@#$%^&*)</li>
++                    </ul>
++                </div>
++                <div class="input-box">
++                    <input type="password"
++                    name="new_password2"
++                    placeholder="Password Confirmation" required>
++                </div>
++                <span id="reset-password-match-error" class="error-message" style="display: none;">The passwords do not match</span>
++
++                <input class="btn" type = "submit" name ="Update Password" value = "Update">
+             </form>
+-        </div>
++    </div>
++    <script src="{% static 'js/password_validation.js' %}"></script>
+ {% endblock %}
+Index: EasyReq/Website/models.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.db import models\nfrom django.contrib.auth.models import AbstractUser, Group, Permission\n\nclass Department(models.Model):\n    id = models.AutoField(primary_key=True)\n    name = models.CharField(max_length=50)\n\n    def __str__(self):\n        return self.name\n\n    class Meta:\n        app_label = 'Website'\n        verbose_name = 'Department'\n        verbose_name_plural = 'Departments'\n\nclass Course(models.Model):\n    id = models.AutoField(primary_key=True)\n    name = models.CharField(max_length=50)\n    dept = models.ForeignKey(Department, on_delete=models.CASCADE)\n\n    def __str__(self):\n        return self.name\n\n    class Meta:\n        app_label = 'Website'\n        verbose_name = 'Course'\n        verbose_name_plural = 'Courses'\n\nclass User(AbstractUser):\n    email = models.EmailField(max_length=100, unique=True)\n    department = models.ForeignKey(Department, on_delete=models.CASCADE)\n    info = models.CharField(max_length=100) ## 'Reservist, Extension'\n    profile_pic = models.FileField(upload_to=\"profile_pics/\", blank=True, null=True)\n    roles = (\n        (0, 'Student'),\n        (1, 'Lecturer'),\n        (2, 'Staff'),\n        (3, 'Deanery'))\n    role = models.SmallIntegerField(default=0, choices=roles)\n    courses = models.ManyToManyField(\"Course\", blank=True)\n\n    def __str__(self):\n        return self.first_name + ' ' + self.last_name\n\n    class Meta:\n        app_label = 'Website'\n        db_table = 'Website_user'\n        verbose_name = 'User'\n        verbose_name_plural = 'Users'\n\n    groups = models.ManyToManyField(\n        Group,\n        related_name='website_user_set',\n        blank=True\n    )\n\n    user_permissions = models.ManyToManyField(\n        Permission,\n        related_name='website_user_permissions_set',\n        blank=True\n    )\n\nclass Request(models.Model):\n    STATUSES = (\n        (0, 'Pending'),\n        (1, 'Approved'),\n        (2, 'Rejected')\n    )\n    student = models.ForeignKey(User, on_delete=models.CASCADE,limit_choices_to={'role': 0})\n    dept = models.ForeignKey(Department, on_delete=models.CASCADE)\n    title = models.CharField(max_length=20)\n    description = models.TextField()\n    status = models.SmallIntegerField(default=0, choices=STATUSES)\n    created = models.DateTimeField(auto_now_add=True)\n    # sla field - function to calc\n\n    class Meta:\n        app_label = 'Website'\n        verbose_name = 'Request'\n        verbose_name_plural = 'Requests'\n\n
+===================================================================
+diff --git a/EasyReq/Website/models.py b/EasyReq/Website/models.py
+--- a/EasyReq/Website/models.py	(revision 970311e71cd8c56d11eee7432df2339edcdda0a3)
++++ b/EasyReq/Website/models.py	(date 1745155360000)
+@@ -29,8 +29,15 @@
+ class User(AbstractUser):
+     email = models.EmailField(max_length=100, unique=True)
+     department = models.ForeignKey(Department, on_delete=models.CASCADE)
++    #department = models.ForeignKey(Department, on_delete=models.CASCADE, default=1) # added default = 1
+     info = models.CharField(max_length=100) ## 'Reservist, Extension'
+-    profile_pic = models.FileField(upload_to="profile_pics/", blank=True, null=True)
++    profile_pic = models.ImageField(
++        upload_to="profile_pics/",
++        blank=True,
++        null=True,
++        default="images/profile.png"
++    )
++
+     roles = (
+         (0, 'Student'),
+         (1, 'Lecturer'),

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<div class="wrapper">
+  <h1>Home</h1>
+    {% if user.is_authenticated %}
+      <h4>Welcome, {{ user.username }}!</h4>
+      <div class="bottom-links">
+        <a href="{% url 'logout' %}" >Logout</a>
+      </div>
+    {% else %}
+      <h2>Welcome, Guest</h2>
+      <div class="bottom-links">
+        <a href="{% url 'login' %}" > go to login page </a>
+      </div>
+    {% endif %}
+</div>
+
+{% endblock %}

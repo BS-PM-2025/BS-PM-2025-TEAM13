@@ -16,6 +16,7 @@ class Department(models.Model):
 class Course(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=50)
+    year = models.SmallIntegerField(default=1)
     dept = models.ForeignKey(Department, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -29,7 +30,6 @@ class Course(models.Model):
 class User(AbstractUser):
     email = models.EmailField(max_length=100, unique=True)
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
-    #department = models.ForeignKey(Department, on_delete=models.CASCADE, default=1) # added default = 1
     info = models.CharField(max_length=100) ## 'Reservist, Extension'
     profile_pic = models.ImageField(
         upload_to="profile_pics/",
@@ -45,6 +45,12 @@ class User(AbstractUser):
         (3, 'Deanery'))
     role = models.SmallIntegerField(default=0, choices=roles)
     courses = models.ManyToManyField("Course", blank=True)
+    year = models.SmallIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if self.role == 1 and self._state.adding:
+            self.is_active = False
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.first_name + ' ' + self.last_name

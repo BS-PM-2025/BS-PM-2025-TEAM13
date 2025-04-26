@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
             const toggleIcon = document.querySelector('.password-toggle-icon');
             const passwordField = document.getElementById('password');
@@ -13,4 +14,3 @@ document.addEventListener('DOMContentLoaded', function() {
                     toggleIcon.classList.add('bxs-lock-alt');
                 }
             });
-        });

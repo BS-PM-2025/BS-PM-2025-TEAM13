@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="{% static 'css/profile.css' %}">
 
 <div class="wrapper">
-    <h1>Profile</h1>
+    <h1>פרופיל</h1>
 
     <!-- success message -->
     {% if messages %}
@@ -47,55 +47,73 @@
     </form>
 
     <div class="input-box">
-        <label><strong>Username:</strong></label>
+        <label><strong>:שם משתמש</strong></label>
         <input type="text" value="{{ user.username }}" disabled>
         <i class='bx bxs-user'></i>
     </div>
 
     <div class="input-box">
-        <label><strong>Email:</strong></label>
+        <label><strong>:מייל</strong></label>
         <input type="email" value="{{ user.email }}" disabled>
         <i class='bx bxs-envelope'></i>
     </div>
 
     <div class="input-box">
-        <label><strong>Full Name:</strong></label>
+        <label><strong>:שם מלא</strong></label>
         <input type="text" value="{{ user.first_name }} {{ user.last_name }}" disabled>
         <i class='bx bxs-user'></i>
     </div>
 
     <div class="input-box">
-        <label><strong>Department:</strong></label>
+        <label><strong>:מחלקה</strong></label>
         <input type="text" value="{{ user.department }}" disabled>
         <i class='bx bxs-building-house'></i>
     </div>
 
     <div class="input-box">
-        <label><strong>Role:</strong></label>
+        <label><strong>:תפקיד</strong></label>
         <input type="text" value="{{ user.get_role_display }}" disabled>
         <i class='bx bxs-id-card'></i>
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-        <button type="button" onclick="togglePasswordForm()" class="btn">Change Password</button>
+        <button type="button" onclick="toggleCourses()" class="btn">הקורסים שלי</button>
+    </div>
+
+    <div id="coursesContainer" style="display: none; text-align: center; margin-top: 20px;">
+        <h3>הקורסים שלך:</h3>
+        <ul>
+            {% for course in user.courses.all %}
+                <li>{{ course.name }}</li>
+            {% empty %}
+                <li>אין לך קורסים.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <button type="button" onclick="togglePasswordForm()" class="btn">עדכון סיסמה</button>
     </div>
 
     <form method="POST" id="passwordForm" style="display: none; margin-top: 20px;">
         {% csrf_token %}
-        <h3 style="text-align:center;">Change Password</h3>
+        <h3 style="text-align:center;">עדכון סיסמה</h3>
         <div class="input-box">
-            <input type="password" name="old_password" placeholder="Current Password" required>
+            <input type="password" name="old_password" placeholder="סיסמה נוכחית" required>
         </div>
         <div class="input-box">
-            <input type="password" name="new_password1" placeholder="New Password" required>
+            <input type="password" name="new_password1" placeholder="סיסמה חדשה" required>
         </div>
         <div class="input-box">
-            <input type="password" name="new_password2" placeholder="Confirm New Password" required>
+            <input type="password" name="new_password2" placeholder="חזרה על הסיסמה החדשה" required>
         </div>
-        <button type="submit" class="btn">Update Password</button>
+        <button type="submit" class="btn">עדכן</button>
     </form>
 
-    </form>
+    <div style="text-align: center; margin-top: 20px;">
+    <button type="button" onclick="window.location.href='{% url 'home' %}'" class="btn">חזרה לדף הבית</button>
+</div>
+
 </div>
 
 <script>
@@ -135,5 +153,11 @@
             });
         }
     });
+
+    function toggleCourses() {
+    const coursesContainer = document.getElementById("coursesContainer");
+    coursesContainer.style.display = (coursesContainer.style.display === "none" || coursesContainer.style.display === "") ? "block" : "none";
+}
+
 </script>
 {% endblock %}

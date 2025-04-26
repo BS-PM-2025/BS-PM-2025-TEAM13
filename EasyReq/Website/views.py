@@ -12,6 +12,7 @@ from django.http import JsonResponse
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render
+
 def home(request):
     return render(request, 'home.html', {'user': request.user})
 
@@ -21,8 +22,8 @@ def register_view(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.save()
-           # if user.role == 1:
-           #     user.is_active = 0
+            if user.role == 1:
+                user.is_active = 0
             if user.role == 0:
                 relevant_courses = Course.objects.filter(year=user.year, dept=user.department)
                 if relevant_courses.exists():
@@ -75,7 +76,7 @@ def login_request(request):
             messages.error(request, "שגיאה באחד מפרטי הזיהוי")
 
     return render(request, 'login.html', {'form': AuthenticationForm()})
-
+            
 @login_required
 def logout_view(request):
     logout(request)
@@ -91,7 +92,6 @@ class Registration(CreateView):
         path_ = "/registration-success/" + str(user.id)
         return redirect(path_, user_id=user.id)
 
-
 @login_required
 def profile_view(request):
     user = request.user
@@ -100,7 +100,6 @@ def profile_view(request):
             user.profile_pic = request.FILES['profile_pic']
             user.save()
             messages.success(request, "!תמונת הפרופיל עודכנה בהצלחה")
-
         if 'old_password' in request.POST:
             password_form = PasswordChangeForm(user, request.POST)
             if password_form.is_valid():
@@ -111,5 +110,7 @@ def profile_view(request):
                 for error in password_form.errors.values():
                     messages.error(request, error)
         return redirect('profile')
-
     return render(request, 'profile.html', {'user': user})
+
+
+

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Request | EasyReq{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+<div class="container py-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">הגשת בקשה חדשה</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="course" class="form-label" >קורס</label>
+                    <select class="form-select" id="course" name="course" required>
+                        <option value="" disabled selected>בחר קורס</option>
+                        {% for course in courses %}
+                            <option value="{{ course.id }}">{{ course.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="title" class="form-label">סוג הבקשה</label>
+                    <select class="form-select" id="title" name="title" required>
+                        {% for title_id, title_name in title_choices %}
+                            <option value="{{ title_id }}">{{ title_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">תיאור הבקשה</label>
+                    <textarea class="form-control" id="description" name="description" rows="6" required></textarea>
+                    <div class="form-text">אנא תאר את בקשתך בפירוט מלא. ככל שתספק יותר מידע, כך נוכל לטפל בבקשתך ביעילות רבה יותר.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="priority" class="form-label">דחיפות</label>
+                    <select class="form-select" id="priority" name="priority" required>
+                        <option value="0">נמוכה</option>
+                        <option value="1" selected>בינונית</option>
+                        <option value="2">גבוהה</option>
+                        <option value="3">דחופה</option>
+                    </select>
+                </div>
+                <!--
+                <div class="mb-3">
+                    <label for="attachment" class="form-label">קבצים מצורפים (אופציונלי)</label>
+                    <input type="file" class="form-control" id="attachment" name="attachment">
+                    <div class="form-text">ניתן לצרף מסמכים התומכים בבקשתך כגון אישורים רפואיים, קבלות וכד'</div>
+                </div> -->
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>הבקשה תעבור לטיפול צוות המחלקה הרלוונטית. תוכל לעקוב אחר הסטטוס בכל עת באזור האישי.</span>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'list_requests' %}" class="btn btn-secondary">חזרה לרשימת הבקשות</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>הגש בקשה
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const templateSelect = document.getElementById('template_select');
+        const titleInput = document.getElementById('title');
+        const descriptionInput = document.getElementById('description');
+        const prioritySelect = document.getElementById('priority');
+
+        if (templateSelect) {
+            templateSelect.addEventListener('change', function() {
+                const templateId = this.value;
+
+                if (!templateId) {
+                    // Clear form if no template selected
+                    titleInput.value = '';
+                    descriptionInput.value = '';
+                    prioritySelect.value = 1; // Default priority
+                    return;
+                }
+
+                // Fetch template details via AJAX
+                fetch(`/Website/request-templates/${templateId}/details/`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Template not found');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        titleInput.value = data.title;
+                        descriptionInput.value = data.description;
+                        prioritySelect.value = data.priority;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching template:', error);
+                        alert('לא ניתן לטעון את התבנית שנבחרה. אנא נסה שוב.');
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %}

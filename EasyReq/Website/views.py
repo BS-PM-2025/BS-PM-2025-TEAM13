@@ -1,6 +1,6 @@
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -71,22 +71,35 @@ def logout_view(request):
 @login_required
 def profile_view(request):
     user = request.user
+
     if request.method == 'POST':
         if 'profile_pic' in request.FILES:
             user.profile_pic = request.FILES['profile_pic']
             user.save()
-            messages.success(request, "Profile picture updated successfully!")
+            messages.success(request, "תמונת הפרופיל עודכנה בהצלחה!")
+
+     
         if 'old_password' in request.POST:
             password_form = PasswordChangeForm(user, request.POST)
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
-                messages.success(request, "Password updated successfully!")
+                messages.success(request, "הסיסמה עודכנה בהצלחה!")
             else:
-                for error in password_form.errors.values():
-                    messages.error(request, error)
+                for field, errors in password_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+
         return redirect('profile')
-    return render(request, 'profile.html', {'user': user})
+
+    else:
+        password_form = PasswordChangeForm(user)
+
+    return render(request, 'profile.html', {
+        'user': user,
+        'password_form': password_form
+    })
+    
 
 def create_request(request):
     if request.method == 'POST':

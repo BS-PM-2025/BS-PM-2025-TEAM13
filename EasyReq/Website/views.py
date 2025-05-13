@@ -88,5 +88,47 @@ def profile_view(request):
         return redirect('profile')
     return render(request, 'profile.html', {'user': user})
 
+def create_request(request):
+    if request.method == 'POST':
+        student = request.user
+        dept_id = student.department_id
+        course_id = request.POST.get('course')
+        title_id = request.POST.get('title')
+        description = request.POST.get('description')
+        priority = request.POST.get('priority', 1)
 
+        # Optional: handle file upload
+        attachment = request.FILES.get('attachment')
+        new_request = Request(student=student,dept_id=dept_id,title=int(title_id),description=description,
+                              priority=priority,attachments=attachment)
+
+        if course_id:
+            new_request.course_id = course_id
+
+        new_request.save()
+        assigned_users = new_request.auto_assign()
+        RequestStatus.objects.create(request=new_request,status=0, updated_by=request.user,notes="Request submitted")
+
+        if len(assigned_users) > 0:
+            send_request_notification(new_request, 'created')
+            for user in assigned_users:
+                send_request_notification(new_request, 'assigned', user)
+
+        return redirect('request_detail', request_id=new_request.id)
+
+    departments = Department.objects.all()
+    courses = request.user.courses.all() if request.user.role == 0 else []
+
+    # Get available templates
+   # if request.user.role == 0:  # Only students see templates
+   #     templates = RequestTemplate.objects.filter(
+   #         dept=request.user.department,
+   #         is_active=True
+   #     )
+   # else:
+    #    templates = []
+
+    return render(request, 'create_request.html', {'departments': departments,'courses': courses,
+                'title_choices': Request.TITLES,})
+    #'templates': templates
 

@@ -12,6 +12,8 @@ from django.http import JsonResponse
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render
+from .models import Notification
+
 def home(request):
     return render(request, 'home.html', {'user': request.user})
 
@@ -118,7 +120,6 @@ def mark_all_notifications_read(request):
 
 @login_required
 def all_notifications(request):
-    """צפייה בכל ההתראות כולל אלו שנקראו"""
     notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
     
     return render(request, 'all_notifications.html', {

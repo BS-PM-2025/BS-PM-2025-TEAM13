@@ -95,7 +95,6 @@ def profile_view(request):
 @login_required
 @require_http_methods(["POST"])
 def mark_notification_read(request):
-    """סימון התראה בודדת כנקראה"""
     try:
         data = json.loads(request.body)
         notification_id = data.get('notification_id')
@@ -111,7 +110,6 @@ def mark_notification_read(request):
 @login_required
 @require_http_methods(["POST"])
 def mark_all_notifications_read(request):
-    """סימון כל ההתראות כנקראות"""
     try:
         Notification.objects.filter(user=request.user, read=False).update(read=True)
         return JsonResponse({'success': True})
@@ -130,7 +128,6 @@ def all_notifications(request):
 @login_required
 @require_http_methods(["POST"])
 def toggle_notification_status(request):
-    """החלפת סטטוס התראה בין נקרא ללא נקרא"""
     try:
         data = json.loads(request.body)
         notification_id = data.get('notification_id')

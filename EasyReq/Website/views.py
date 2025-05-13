@@ -90,3 +90,57 @@ def profile_view(request):
         return redirect('profile')
 
     return render(request, 'profile.html', {'user': user})
+
+
+@login_required
+@require_http_methods(["POST"])
+def mark_notification_read(request):
+    """סימון התראה בודדת כנקראה"""
+    try:
+        data = json.loads(request.body)
+        notification_id = data.get('notification_id')
+        
+        notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+        notification.read = True
+        notification.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def mark_all_notifications_read(request):
+    """סימון כל ההתראות כנקראות"""
+    try:
+        Notification.objects.filter(user=request.user, read=False).update(read=True)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def all_notifications(request):
+    """צפייה בכל ההתראות כולל אלו שנקראו"""
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    
+    return render(request, 'all_notifications.html', {
+        'notifications': notifications
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_notification_status(request):
+    """החלפת סטטוס התראה בין נקרא ללא נקרא"""
+    try:
+        data = json.loads(request.body)
+        notification_id = data.get('notification_id')
+        read_status = data.get('read') 
+        
+        notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+        notification.read = read_status
+        notification.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+

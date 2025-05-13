@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}התראות | EasyReq{% endblock %}
+
+{% block content %}
+<style>
+  .notifications-container {
+    background: #fff;
+    padding: 30px;
+    width: 90%;
+    max-width: 800px;
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(46, 70, 122, 0.15);
+    margin: 40px auto;
+  }
+
+  .notifications-header {
+    text-align: center;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .notifications-header i {
+    font-size: 40px;
+    color: #2d6cdf;
+    margin-bottom: 15px;
+  }
+
+  .notifications-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+  }
+
+  .notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 25px;
+  }
+
+  .notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px;
+    border-radius: 12px;
+    background-color: #f9f9f9;
+    transition: all 0.3s ease;
+    border: 1px solid #eee;
+  }
+
+  .notification-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  }
+
+  .unread-notification {
+    background-color: #f0f4ff;
+    border-right: 4px solid #2d6cdf;
+  }
+
+  .notification-icon-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 15px;
+    flex-shrink: 0;
+    color: white;
+  }
+
+  .noti-green {
+    background-color: #4caf50;
+  }
+
+  .noti-blue {
+    background-color: #2196f3;
+  }
+
+  .noti-red {
+    background-color: #f44336;
+  }
+
+  .notification-content {
+    flex: 1;
+  }
+
+  .notification-message {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .notification-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #777;
+  }
+
+  .notification-status {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: #2d6cdf;
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .no-notifications {
+    text-align: center;
+    color: #777;
+    font-size: 18px;
+    padding: 40px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    border: 1px dashed #ddd;
+  }
+  
+  .back-link {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
+  .back-link a {
+    display: inline-flex;
+    align-items: center;
+    color: #2d6cdf;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    gap: 5px;
+  }
+  
+  .back-link a:hover {
+    text-decoration: underline;
+  }
+  
+  .read-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin-right: auto;
+    min-width: 80px;
+    text-align: center;
+  }
+  
+  .read-btn {
+    color: #2d6cdf;
+    border: 1px solid #2d6cdf;
+  }
+  
+  .read-btn:hover {
+    background-color: #2d6cdf;
+    color: white;
+  }
+  
+  .unread-btn {
+    color: #888;
+    border: 1px solid #ccc;
+  }
+  
+  .unread-btn:hover {
+    background-color: #f2f2f2;
+    color: #555;
+  }
+  
+  .mark-all-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  
+  .mark-all-read-btn {
+    background-color: #2d6cdf;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .mark-all-read-btn:hover {
+    background-color: #1a56c5;
+  }
+  .read-status-btn {
+  color: #4caf50;
+  border: 1px solid #4caf50;
+}
+
+.read-status-btn:hover {
+  background-color: #f2f2f2;
+  color: #388e3c;
+}
+
+.unread-status-btn {
+  color: #2d6cdf;
+  border: 1px solid #2d6cdf;
+}
+
+.unread-status-btn:hover {
+  background-color: #f0f4ff;
+  color: #1a56c5;
+}
+</style>
+
+<div class="notifications-container">
+  <div class="notifications-header">
+    <i class="fas fa-bell"></i>
+    <h2>כל ההתראות</h2>
+  </div>
+ 
+  <input type="hidden" name="csrfmiddlewaretoken" id="csrfToken" value="{{ csrf_token }}">
+
+  {% if notifications %}
+  <div class="notification-list">
+    {% for note in notifications %}
+    <div class="notification-item {% if not note.read %}unread-notification{% endif %}" data-note-id="{{ note.id }}">
+      <div class="notification-icon-circle {% cycle 'noti-green' 'noti-blue' 'noti-red' %}">
+        <i class="fas fa-info"></i>
+      </div>
+      <div class="notification-content">
+        <div class="notification-message">{{ note.message }}</div>
+        <div class="notification-meta">
+          <span class="notification-time">{{ note.created_at|date:"d/m/Y H:i" }}</span>
+          {% if not note.read %}
+          <span class="notification-status">חדש</span>
+          {% endif %}
+        </div>
+      </div>
+    {% if note.read %}
+      <button onclick="toggleReadStatus({{ note.id }}, false)" class="toggle-read-btn read-status-btn" title="לחץ כדי לסמן כלא נקרא">
+        <i class="fas fa-envelope"></i> סמן כלא נקרא
+      </button>
+    {% else %}
+      <button onclick="toggleReadStatus({{ note.id }}, true)" class="toggle-read-btn unread-status-btn" title="לחץ כדי לסמן כנקרא">
+        <i class="fas fa-check"></i> סמן כנקרא
+      </button>
+    {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  
+  <div class="mark-all-container">
+    <button onclick="markAllAsRead()" class="mark-all-read-btn">סמן הכל כנקרא</button>
+  </div>
+  {% else %}
+  <p class="no-notifications">אין התראות להצגה</p>
+  {% endif %}
+  
+  <div class="back-link">
+    <a href="{% url 'home' %}"><i class="fas fa-arrow-right"></i> חזרה לדף הבית</a>
+  </div>
+</div>
+
+<script>
+function toggleReadStatus(noteId, markAsRead) {
+  fetch(markAsRead ? "/mark_notification_read/" : "/toggle_notification_status/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRFToken()
+    },
+    body: JSON.stringify({ 
+      notification_id: noteId,
+      read: markAsRead
+    })
+  }).then(response => response.json()).then(data => {
+    if (data.success) location.reload();
+  });
+}
+
+function markAllAsRead() {
+  fetch("/mark_all_notifications_read/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRFToken()
+    }
+  }).then(response => response.json()).then(data => {
+    if (data.success) location.reload();
+  });
+}
+
+function getCSRFToken() {
+  const name = 'csrftoken';
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    const cookie = cookies[i].trim();
+    if (cookie.startsWith(name + '=')) {
+      return decodeURIComponent(cookie.substring(name.length + 1));
+    }
+  }
+  return '';
+}
+</script>
+{% endblock %}

@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('updateProfileForm').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -46,4 +47,3 @@ document.addEventListener('DOMContentLoaded', function() {
                     toggleIcon.classList.add('bxs-lock-alt');
                 }
             });
-        });

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>{% block title %}EasyReq{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <style>
+        .top-bar {
+          direction: rtl;
+          font-family: Calibri;
+
+        }
+        .top-bar a {
+          margin-left: 50px;
+          font-family: Calibri;
+
+        }
+    </style>
+</head>
+<body>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <div class="top-bar">
+        {% if user.is_authenticated %}
+          {% if role > 0 %}
+            <a href="{% url 'home' %}">דף הבית</a>
+            <a href="{% url 'list_requests' %}">בקשות סטודנטים</a>
+            <a href="{% url 'dashboard' %}">דשבורד</a>
+            <a href="{% url 'profile' %}">פרופיל</a>
+            <a href="{% url 'logout' %}">להתנתקות ויציאה</a>
+          {% else %}
+            <a href="{% url 'home' %}">דף הבית</a>
+            <a href="{% url 'list_requests' %}">בקשות סטודנטים</a>
+            <a href="{% url 'profile' %}">פרופיל</a>
+            <a href="{% url 'logout' %}">להתנתקות ויציאה</a>
+          {% endif %}
+
+        {% else %}
+          <a href="{% url 'home' %}" class="green-link">דף הבית </a>
+          <a href="{% url 'register' %}" class="green-link">הרשמה </a>
+          <a href="{% url 'login' %}" class="green-link">התחברות</a>
+        {% endif %}
+    </div>
+    <div id="bthn" lang="he"></div>
+    <script>
+     (function () {
+       var script = document.createElement("script");
+       script.type = "text/javascript";
+       script.src = "https://bringthemhomenow.net/1.3.0/hostages-ticker.js";
+       script.setAttribute(
+         "integrity",
+         "sha384-MmP7bD5QEJWvJccg9c0lDnn3LjjqQWDiRCxRV+NU8hij15icuwb29Jfw1TqJwuSv"
+       );
+       script.setAttribute("crossorigin", "anonymous");
+       document.getElementsByTagName("head")[0].appendChild(script);
+     })();
+    </script>
+
+        {% block content %}
+        {% endblock %}
+</body>
+</html>

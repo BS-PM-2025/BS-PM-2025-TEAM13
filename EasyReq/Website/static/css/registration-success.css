@@ -1,0 +1,98 @@
+.success-card {
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 82, 212, 0.2);
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transform: translateY(0);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-right: 20px; /* Added right margin */
+    position:absolute; left:-500px; top:30px;
+}
+
+.success-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(0, 82, 212, 0.3);
+}
+
+.success-header {
+    background: linear-gradient(135deg, #0052d4, #4364f7);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.4rem;
+}
+
+.success-body {
+    padding: 25px;
+    color: #333;
+}
+
+.success-message {
+    margin-bottom: 20px;
+}
+
+.greeting {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0052d4;
+    margin-bottom: 15px;
+}
+
+.success-message p {
+    margin-bottom: 10px;
+    line-height: 1.6;
+    color: #444;
+}
+
+.lecturer-message {
+    border-left: 4px solid #0052d4;
+    padding-left: 15px;
+}
+
+.student-message {
+    border-left: 4px solid #00b4d8;
+    padding-left: 15px;
+}
+
+.signature {
+    font-style: italic;
+    color: #666;
+    margin-top: 20px;
+}
+
+.login-button {
+    display: inline-block;
+    background: linear-gradient(135deg, #0052d4, #4364f7);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 82, 212, 0.3);
+    border: none;
+    justify-content: center;
+    left: 120px;
+}
+
+.login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 82, 212, 0.4);
+    color: white;
+    background: linear-gradient(135deg, #0047b6, #3a56d8);
+}
+
+@media (max-width: 768px) {
+    .success-card {
+        margin-right: 0;
+        margin-top: 30px;
+        position:absolute; left:-500px; top:30px;
+    }
+
+    .success-header h3 {
+        font-size: 1.3rem;
+    }
+}

@@ -155,7 +155,8 @@ def profile_view(request):
         'user': user,
         'password_form': password_form
     })
-  
+
+@login_required
 def create_request(request):
     if request.method == 'POST':
         student = request.user

@@ -23,11 +23,16 @@ body{
     box-shadow: 0 0 10px rgba(0,0,0,.2);
     color:#fff;
     border-radius: 10px;
-    padding: 30px 40px;
+    padding: 30px 20px;
 }
 
 .wrapper h1{
     font-size: 36px;
+    text-align: center;
+}
+
+.wrapper h3{
+    font-size: 24px;
     text-align: center;
 }
 
@@ -64,8 +69,9 @@ body{
 }
 
 .wrapper .forgot-link{
+    display: flex;
+    justify-content: space-between;
     font-size: 14.5px;
-    text-align: center;
 }
 
 .forgot-link a{
@@ -113,3 +119,102 @@ body{
     font-size: 14px;
     color: #fff;
 }
+
+.text-section {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.text-section h1 {
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 1.4;
+    color: #fff;
+    margin-bottom: 15px;
+}
+
+.text-section p {
+    font-size: 16px;
+    color: #e0e0e0;
+    line-height: 1.6;
+    margin: 0;
+}
+
+
+.bottom-links a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.bottom-links a:hover {
+    text-decoration: underline;
+}
+
+.wrapper p {
+    font-size: 16px;
+    color: #f0f0f0;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+}
+
+.password-requirements {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    direction: rtl;
+}
+
+.password-requirements p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    text-align: right;
+}
+
+.password-requirements ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.password-requirements li {
+    margin: 5px 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    padding-right: 20px;
+    position: relative;
+    text-align: right;
+}
+
+.password-requirements li:before {
+    content: "×";
+    color: rgba(255, 100, 100, 0.8);
+    position: absolute;
+    right: 0;
+    font-weight: bold;
+}
+
+.password-requirements li.valid {
+    color: rgba(200, 255, 200, 0.9);
+}
+
+.password-requirements li.valid:before {
+    content: "✓";
+    color: rgba(100, 255, 100, 0.8);
+}
+
+.error-message {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin-top: -20px;
+    margin-bottom: 15px;
+    display: block;
+    text-align: right;
+    direction: rtl;
+}
+
+

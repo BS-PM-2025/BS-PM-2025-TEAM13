@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<div class="wrapper">
+  <h1>בית</h1>
+    {% if user.is_authenticated %}
+      <h4>! {{ user.username }},שלום</h4>
+      <div class="bottom-links">
+        <a href="{% url 'profile' %}" >לפרופיל שלי</a>
+        <br>
+        <a href="{% url 'logout' %}" >התנתק</a>
+      </div>
+    {% else %}
+      <h4>שלום, אורח</h4>
+      <div class="bottom-links">
+        <a href="{% url 'login' %}" > התחברות </a>
+        <br>
+        <a href="{% url 'register' %}" > הרשמה </a>
+      </div>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Registration Complete | EasyReq{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/registration-success.css' %}">
+
+<!-- Background overlay with subtle gradient -->
+<div class="background-overlay"></div>
+
+<div class="container mt-5"style="position:absolute; left:1150px; top: 60px;">
+    <div class="row justify-content-end">
+        <div class="col-md-6 col-lg-5">
+            <div class="success-card">
+                <div class="success-header">
+                    <h3 class="text-center mb-0">!נרשמת בהצלחה</h3>
+                </div>
+                <div class="success-body">
+                    {% if role == 1 %}
+                        <div class="success-message lecturer-message">
+                            <p class="greeting">,מרצה יקר</p>
+                            <p>על מנת להבטיח את פרטיות הסטודנטים במכללה, עליך להמתין לאישור הרשמתך ע״י מנהל המערכת</p>
+                            <p>לאחר שמנהל המערכת יאשר אותך, תוכל להתחבר לאתר</p>
+                            <p>אנו מודים לך על הסבלנות</p>
+                            <p class="signature">EasyReq צוות המכללה ו</p>
+                        </div>
+                    {% elif role == 0 %}
+                        <div class="success-message student-message">
+                            <p class="greeting">,סטודנט יקר</p>
+                            <p>הרשמתך הסתיימה בהצלחה, כעת תוכל להתחבר לאתר ולהנות מהשירותים שלנו</p>
+                            <p class="signature">EasyReq צוות המכללה ו</p>
+                        </div>
+                    {% endif %}
+                    <div class="text-center mt-4" style="left:500px">
+                        <a href="{% url 'login' %}" class="login-button">
+                            <i class="fas fa-sign-in-alt mr-2"></i>לעמוד התחברות
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+{% endblock %}

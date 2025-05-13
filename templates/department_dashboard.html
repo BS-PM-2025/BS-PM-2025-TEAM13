@@ -1,0 +1,1329 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}המחלקה שלי | EasyReq {% endblock %}
+
+{% block content %}
+
+<div class="department-dashboard container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">
+                    <i class="fas fa-university me-2"></i>המחלקה שלי: {{ department.name }}
+                </h1>
+                <div class="department-actions">
+                    <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#exportDataModal">
+                        <i class="fas fa-download me-1"></i>ייצוא נתונים
+                    </button>
+                    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                        <i class="fas fa-cog me-1"></i>הגדרות
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">סה"כ בקשות</h6>
+                            <h2 class="mb-0">{{ stats.total_requests }}</h2>
+                        </div>
+                        <div class="icon-container">
+                            <i class="fas fa-file-alt fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-light text-primary">
+                            החודש: {{ stats.this_month_requests }}
+                            {% if stats.month_change_pct > 0 %}
+                                <i class="fas fa-arrow-up ms-1"></i>{{ stats.month_change_pct }}%
+                            {% elif stats.month_change_pct < 0 %}
+                                <i class="fas fa-arrow-down ms-1"></i>{{ stats.month_change_pct }}%
+                            {% else %}
+                                <i class="fas fa-equals ms-1"></i>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">מרצים פעילים</h6>
+                            <h2 class="mb-0">{{ stats.lecturer_count }}</h2>
+                        </div>
+                        <div class="icon-container">
+                            <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        {% if pending_count > 0 %}
+                            <span class="badge bg-light text-success">
+                                {{ pending_count }} ממתינים לאישור <i class="fas fa-clock ms-1"></i>
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">סטודנטים</h6>
+                            <h2 class="mb-0">{{ stats.student_count }}</h2>
+                        </div>
+                        <div class="icon-container">
+                            <i class="fas fa-user-graduate fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-light text-info">
+                            {{ stats.course_count }} קורסים
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">סטטוס SLA</h6>
+                            <h2 class="mb-0">{{ stats.overdue_count }}</h2>
+                        </div>
+                        <div class="icon-container">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-light text-warning">
+                            {{ stats.at_risk_count }} בקשות בסיכון
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <ul class="nav nav-tabs nav-fill" id="departmentTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if active_tab == 'overview' %}active{% endif %}"
+                                    id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview"
+                                    type="button" role="tab">
+                                <i class="fas fa-th-large me-1"></i>סקירה כללית
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if active_tab == 'lecturers' %}active{% endif %}"
+                                    id="lecturers-tab" data-bs-toggle="tab" data-bs-target="#lecturers"
+                                    type="button" role="tab">
+                                <i class="fas fa-user-tie me-1"></i>ניהול מרצים
+                                {% if pending_count > 0 %}
+                                    <span class="badge rounded-pill bg-danger">{{ pending_count }}</span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if active_tab == 'students' %}active{% endif %}"
+                                    id="students-tab" data-bs-toggle="tab" data-bs-target="#students"
+                                    type="button" role="tab">
+                                <i class="fas fa-user-graduate me-1"></i>ניהול סטודנטים
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if active_tab == 'courses' %}active{% endif %}"
+                                    id="courses-tab" data-bs-toggle="tab" data-bs-target="#courses"
+                                    type="button" role="tab">
+                                <i class="fas fa-book me-1"></i>ניהול קורסים
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if active_tab == 'analytics' %}active{% endif %}"
+                                    id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics"
+                                    type="button" role="tab">
+                                <i class="fas fa-chart-bar me-1"></i>אנליטיקה
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="departmentTabsContent">
+        <!-- Overview Tab -->
+        <div class="tab-pane fade {% if active_tab == 'overview' %}show active{% endif %}" id="overview" role="tabpanel">
+            <div class="row">
+                <!-- Recent Requests -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">בקשות אחרונות</h5>
+                            <a href="{% url 'list_requests' %}" class="btn btn-sm btn-outline-primary">הצג הכל</a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if recent_requests %}
+                                <div class="list-group list-group-flush">
+                                    {% for req in recent_requests %}
+                                        <a href="{% url 'request_detail' req.id %}" class="list-group-item list-group-item-action">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h6 class="mb-1">{{ req.get_title_display }}</h6>
+                                                <small>{{ req.created|date:"d/m/Y" }}</small>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user me-1"></i>{{ req.student.get_full_name }}
+                                                </small>
+                                                <span class="badge
+                                                    {% if req.pipeline_status == 0 %}bg-info
+                                                    {% elif req.pipeline_status == 1 %}bg-primary
+                                                    {% elif req.pipeline_status == 2 %}bg-primary
+                                                    {% elif req.pipeline_status == 3 %}bg-warning
+                                                    {% elif req.pipeline_status == 4 %}bg-success
+                                                    {% elif req.pipeline_status == 5 %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ req.get_current_status_display }}
+                                                </span>
+                                            </div>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="p-4 text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-inbox fa-3x text-muted"></i>
+                                    </div>
+                                    <p class="text-muted">אין בקשות חדשות במחלקה.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Request Distribution Chart -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">התפלגות בקשות</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="requestsChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Department Staff -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">צוות המחלקה</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for lecturer in active_lecturers|slice:":5" %}
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar bg-primary text-white rounded-circle me-2">
+                                                {{ lecturer.first_name|slice:":1" }}{{ lecturer.last_name|slice:":1" }}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">{{ lecturer.get_full_name }}</h6>
+                                                <small class="text-muted">{{ lecturer.email }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div class="p-4 text-center">
+                                        <p class="text-muted">אין מרצים פעילים במחלקה.</p>
+                                    </div>
+                                {% endfor %}
+
+                                {% if active_lecturers.count > 5 %}
+                                    <div class="list-group-item text-center">
+                                        <button class="btn btn-sm btn-link" onclick="document.getElementById('lecturers-tab').click()">
+                                            הצג את כל {{ active_lecturers.count }} המרצים
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Department Courses -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">קורסים פופולריים</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="coursesChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lecturers Tab -->
+        <div class="tab-pane fade {% if active_tab == 'lecturers' %}show active{% endif %}" id="lecturers" role="tabpanel">
+            <div class="row mb-4">
+                <!-- Pending Approvals -->
+                <div class="col-12">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-clock me-2"></i>אישורי מרצים ממתינים
+                            </h5>
+                            <span class="badge bg-light text-warning">{{ pending_count }} בקשות</span>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if pending_lecturers %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>שם מלא</th>
+                                                <th>אימייל</th>
+                                                <th>תאריך רישום</th>
+                                                <th>קורסים</th>
+                                                <th>פעולות</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for lecturer in pending_lecturers %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar bg-warning text-white rounded-circle me-2">
+                                                                {{ lecturer.first_name|slice:":1" }}{{ lecturer.last_name|slice:":1" }}
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="mb-0">{{ lecturer.get_full_name }}</h6>
+                                                                <small class="text-muted">{{ lecturer.username }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>{{ lecturer.email }}</td>
+                                                    <td>{{ lecturer.date_joined|date:"d/m/Y" }}</td>
+                                                    <td>
+                                                        {% if lecturer.courses.all %}
+                                                            <div class="course-list">
+                                                                {% for course in lecturer.courses.all %}
+                                                                    <span class="badge bg-light text-dark me-1">{{ course.name }}</span>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-muted">לא נבחרו קורסים</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex">
+                                                            <form method="post" action="{% url 'approve_lecturer' %}" class="me-2">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="action" value="approve">
+                                                                <input type="hidden" name="user_id" value="{{ lecturer.id }}">
+                                                                <button type="submit" class="btn btn-success btn-sm">
+                                                                    <i class="fas fa-check me-1"></i>אישור
+                                                                </button>
+                                                            </form>
+                                                            <form method="post" action="{% url 'approve_lecturer' %}">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="action" value="reject">
+                                                                <input type="hidden" name="user_id" value="{{ lecturer.id }}">
+                                                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('האם אתה בטוח שברצונך לדחות את בקשת הרישום?')">
+                                                                    <i class="fas fa-times me-1"></i>דחייה
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="p-4 text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-check-circle fa-3x text-success"></i>
+                                    </div>
+                                    <p class="text-muted">אין בקשות רישום חדשות.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Lecturers -->
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">מרצים פעילים</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="p-3">
+                                <div class="input-group mb-3">
+                                    <input type="text" id="lecturerSearchInput" class="form-control" placeholder="חיפוש לפי שם או אימייל...">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {% if active_lecturers %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>שם מלא</th>
+                                                <th>אימייל</th>
+                                                <th>קורסים</th>
+                                                <th>בקשות</th>
+                                                <th>פעולות</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lecturersTableBody">
+                                            {% for lecturer in active_lecturers %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar bg-primary text-white rounded-circle me-2">
+                                                                {{ lecturer.first_name|slice:":1" }}{{ lecturer.last_name|slice:":1" }}
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="mb-0">{{ lecturer.get_full_name }}</h6>
+                                                                <small class="text-muted">{{ lecturer.username }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>{{ lecturer.email }}</td>
+                                                    <td>
+                                                        {% if lecturer.courses.all %}
+                                                            <div class="course-list">
+                                                                {% for course in lecturer.courses.all %}
+                                                                    <span class="badge bg-light text-dark me-1">{{ course.name }}</span>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-muted">לא נבחרו קורסים</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info rounded-pill">
+                                                            {{ lecturer.assigned_requests.count }} בקשות
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#editLecturerModal" data-id="{{ lecturer.id }}">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deactivateLecturerModal" data-id="{{ lecturer.id }}">
+                                                            <i class="fas fa-user-times"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="p-4 text-center">
+                                    <p class="text-muted">אין מרצים פעילים במחלקה.</p>
+                                    <a href="{% url 'invite_lecturer' %}" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>הזמן מרצה חדש
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Students Tab -->
+        <div class="tab-pane fade {% if active_tab == 'students' %}show active{% endif %}" id="students" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">ניהול סטודנטים</h5>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#importStudentsModal">
+                                    <i class="fas fa-file-import me-1"></i>ייבוא סטודנטים
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-envelope me-1"></i>שליחת הודעה
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="p-3">
+                                <div class="input-group mb-3">
+                                    <input type="text" id="studentSearchInput" class="form-control" placeholder="חיפוש לפי שם, אימייל, או ת.ז...">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+
+                                <div class="d-flex justify-content-between mb-3">
+                                    <div>
+                                        <select id="courseFilter" class="form-select form-select-sm">
+                                            <option value="">כל הקורסים</option>
+                                            {% for course in courses %}
+                                                <option value="{{ course.id }}">{{ course.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button id="toggleActiveFilter" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-user-check me-1"></i>סטודנטים פעילים בלבד
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if students %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>שם מלא</th>
+                                                <th>אימייל</th>
+                                                <th>ת.ז.</th>
+                                                <th>קורסים</th>
+                                                <th>בקשות</th>
+                                                <th>סטטוס</th>
+                                                <th>פעולות</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="studentsTableBody">
+                                            {% for student in students %}
+                                                <tr data-active="{{ student.is_active }}" data-courses="{{ student.courses.all|join:"," }}">
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar bg-info text-white rounded-circle me-2">
+                                                                {{ student.first_name|slice:":1" }}{{ student.last_name|slice:":1" }}
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="mb-0">{{ student.get_full_name }}</h6>
+                                                                <small class="text-muted">{{ student.username }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>{{ student.email }}</td>
+                                                    <td>{{ student.id_number|default:"לא צוין" }}</td>
+                                                    <td>
+                                                        {% if student.courses.all %}
+                                                            <div class="course-list">
+                                                                {% for course in student.courses.all %}
+                                                                    <span class="badge bg-light text-dark me-1">{{ course.name }}</span>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-muted">לא רשום לקורסים</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info rounded-pill">
+                                                            {{ student.requests_as_student.count }} בקשות
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {% if student.is_active %}
+                                                            <span class="badge bg-success">פעיל</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">לא פעיל</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="studentActions{{ student.id }}" data-bs-toggle="dropdown">
+                                                            פעולות
+                                                        </button>
+                                                        <ul class="dropdown-menu" aria-labelledby="studentActions{{ student.id }}">
+                                                            <li>
+                                                                <a class="dropdown-item" href="{% url 'edit_student_form' student.id %}">
+                                                                    <i class="fas fa-edit me-1"></i>עריכת פרטים
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="{% url 'student_requests' student.id %}">
+                                                                    <i class="fas fa-clipboard-list me-1"></i>צפה בבקשות
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="{% url 'assign_student_courses_form' student.id %}">
+                                                                    <i class="fas fa-book me-1"></i>שיוך לקורסים
+                                                                </a>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            {% if student.is_active %}
+                                                                <li>
+                                                                    <a class="dropdown-item text-danger" href="{% url 'confirm_deactivate_student' student.id %}">
+                                                                        <i class="fas fa-user-slash me-1"></i>השבת המשתמש
+                                                                    </a>
+                                                                </li>
+                                                            {% else %}
+                                                                <li>
+                                                                    <a class="dropdown-item text-success" href="{% url 'activate_student' student.id %}">
+                                                                        <i class="fas fa-user-check me-1"></i>הפעל חשבון
+                                                                    </a>
+                                                                </li>
+                                                            {% endif %}
+                                                        </ul>
+                                                    </div>
+                                                </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="d-flex justify-content-center p-3">
+                                    <nav>
+                                        <ul class="pagination">
+                                            <li class="page-item disabled">
+                                                <span class="page-link">הקודם</span>
+                                            </li>
+                                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="#">הבא</a>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                </div>
+                            {% else %}
+                                <div class="p-4 text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-user-graduate fa-3x text-muted"></i>
+                                    </div>
+                                    <p class="text-muted">אין סטודנטים רשומים במחלקה.</p>
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importStudentsModal">
+                                        <i class="fas fa-file-import me-1"></i>ייבוא סטודנטים
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Courses Tab -->
+        <div class="tab-pane fade {% if active_tab == 'courses' %}show active{% endif %}" id="courses" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">ניהול קורסים</h5>
+                            <a href="{% url 'add_course' %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>הוסף קורס
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="p-3">
+                                <div class="input-group mb-3">
+                                    <input type="text" id="courseSearchInput" class="form-control" placeholder="חיפוש לפי שם או קוד קורס...">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {% if courses %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>שם הקורס</th>
+                                                <th>קוד קורס</th>
+                                                <th>מרצים</th>
+                                                <th>סטודנטים</th>
+                                                <th>בקשות</th>
+                                            </tr>
+                                        </thead>
+                                        <<!-- Change this part of your courses section -->
+                                    <tbody id="coursesTableBody">
+                                        {% for course_item in course_data %}
+                                            <tr>
+                                                <td>
+                                                    <h6 class="mb-0">{{ course_item.course.name }}</h6>
+                                                </td>
+                                                <td>{{ course_item.course.id }}</td>
+                                                <td>
+                                                    {% if course_item.lecturer_count > 0 %}
+                                                        <div class="avatar-group">
+                                                            {% for lecturer in course_item.lecturers %}
+                                                                <div class="avatar avatar-sm bg-primary text-white rounded-circle" title="{{ lecturer.get_full_name }}">
+                                                                    {{ lecturer.first_name|slice:":1" }}{{ lecturer.last_name|slice:":1" }}
+                                                                </div>
+                                                            {% endfor %}
+                                                            {% if course_item.lecturer_count > 3 %}
+                                                                <div class="avatar avatar-sm bg-secondary text-white rounded-circle">
+                                                                    +{{ course_item.lecturer_count|add:"-3" }}
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    {% else %}
+                                                        <span class="text-muted">אין מרצים</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info rounded-pill">
+                                                        {{ course_item.student_count }} סטודנטים
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning rounded-pill">
+                                                        {{ course_item.request_count }} בקשות
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="p-4 text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-book fa-3x text-muted"></i>
+                                    </div>
+                                    <p class="text-muted">אין קורסים רשומים במחלקה.</p>
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCourseModal">
+                                        <i class="fas fa-plus me-1"></i>הוסף קורס חדש
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div class="tab-pane fade {% if active_tab == 'analytics' %}show active{% endif %}" id="analytics" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">ניתוח בקשות</h5>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary active">החודש האחרון</button>
+                                <button class="btn btn-sm btn-outline-secondary">הרבעון האחרון</button>
+                                <button class="btn btn-sm btn-outline-secondary">השנה האחרונה</button>
+                                <button class="btn btn-sm btn-outline-secondary">התאם טווח</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Request Trends Chart -->
+                            <div class="chart-container" style="position: relative; height:300px;">
+                                <canvas id="requestTrendsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">התפלגות לפי סוג בקשה</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="requestTypeChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">זמני טיפול ממוצעים</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="resolutionTimeChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">סטטיסטיקות מתקדמות</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body text-center">
+                                            <h6 class="text-muted mb-2">זמן טיפול ממוצע</h6>
+                                            <h3 class="mb-0">{{ stats.avg_resolution_time }} שעות</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body text-center">
+                                            <h6 class="text-muted mb-2">אחוז אישור בקשות</h6>
+                                            <h3 class="mb-0">
+                                                {% if stats.total_requests > 0 %}
+                                                    {{ stats.approved_requests|divisibleby:stats.total_requests|floatformat:1 }}%
+                                                {% else %}
+                                                    0%
+                                                {% endif %}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body text-center">
+                                            <h6 class="text-muted mb-2">בקשות לכל סטודנט</h6>
+                                            <h3 class="mb-0">
+                                                {% if stats.student_count > 0 %}
+                                                    {{ stats.total_requests|divisibleby:stats.student_count|floatformat:1 }}
+                                                {% else %}
+                                                    0
+                                                {% endif %}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Add Course Modal -->
+<div class="modal fade" id="addCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">הוסף קורס חדש</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'add_course' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseName" class="form-label">שם הקורס</label>
+                        <input type="text" class="form-control" id="courseName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseCode" class="form-label">קוד קורס</label>
+                        <input type="text" class="form-control" id="courseCode" name="code" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseDescription" class="form-label">תיאור</label>
+                        <textarea class="form-control" id="courseDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="courseActive" name="is_active" checked>
+                            <label class="form-check-label" for="courseActive">
+                                קורס פעיל
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-primary">שמור קורס</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    .avatar-sm {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+
+    .avatar-group {
+        display: flex;
+    }
+
+    .avatar-group .avatar {
+        margin-left: -10px;
+        border: 2px solid #fff;
+    }
+
+    .course-list {
+        max-height: 60px;
+        overflow-y: auto;
+    }
+
+    .icon-container {
+        opacity: 0.8;
+    }
+
+    /* Tab styling */
+    .nav-tabs .nav-link {
+        color: #495057;
+        border: none;
+        padding: 1rem;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background-color: #fff;
+        border-bottom: 3px solid #0d6efd;
+    }
+
+    /* Card shadow effects */
+    .shadow-sm {
+        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075)!important;
+    }
+
+    /* Chart containers */
+    .chart-container {
+        position: relative;
+        margin: auto;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize charts
+        initializeCharts();
+
+        // Setup search filters
+        setupSearchFilters();
+
+        // Tab persistence
+        const tabs = document.querySelectorAll('button[data-bs-toggle="tab"]');
+        tabs.forEach(tab => {
+            tab.addEventListener('shown.bs.tab', event => {
+                const targetId = event.target.getAttribute('data-bs-target').replace('#', '');
+                // Update URL with tab ID without reloading the page
+                const url = new URL(window.location);
+                url.searchParams.set('tab', targetId);
+                window.history.pushState({}, '', url);
+            });
+        });
+    });
+
+    function initializeCharts() {
+        // Request Distribution Chart
+        const requestsCtx = document.getElementById('requestsChart').getContext('2d');
+        new Chart(requestsCtx, {
+            type: 'pie',
+            data: {
+                labels: ['בטיפול', 'אושרו', 'נדחו'],
+                datasets: [{
+                    data: [{{ stats.pending_requests }}, {{ stats.approved_requests }}, {{ stats.rejected_requests }}],
+                    backgroundColor: ['#ffc107', '#28a745', '#dc3545'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+
+        // Request Trends Chart
+        const trendsCtx = document.getElementById('requestTrendsChart').getContext('2d');
+        new Chart(trendsCtx, {
+            type: 'line',
+            data: {
+                labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'],
+                datasets: [{
+                    label: 'בקשות חדשות',
+                    data: [65, 59, 80, 81, 56, 55],
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                },
+                {
+                    label: 'בקשות שטופלו',
+                    data: [40, 45, 60, 70, 45, 50],
+                    fill: false,
+                    borderColor: 'rgb(54, 162, 235)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Request Type Chart
+        const typeCtx = document.getElementById('requestTypeChart').getContext('2d');
+        new Chart(typeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['תיאום מועד מבחן', 'ערעור על ציון', 'בקשה לדחיית הגשה', 'בעיה טכנית', 'שאלה לגבי חומר'],
+                datasets: [{
+                    label: 'מספר בקשות',
+                    data: [12, 19, 8, 5, 10],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(54, 162, 235, 0.5)',
+                        'rgba(255, 206, 86, 0.5)',
+                        'rgba(75, 192, 192, 0.5)',
+                        'rgba(153, 102, 255, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Resolution Time Chart
+        const resolutionCtx = document.getElementById('resolutionTimeChart').getContext('2d');
+        new Chart(resolutionCtx, {
+            type: 'bar',
+            data: {
+                labels: ['תיאום מועד מבחן', 'ערעור על ציון', 'בקשה לדחיית הגשה', 'בעיה טכנית', 'שאלה לגבי חומר'],
+                datasets: [{
+                    label: 'זמן טיפול ממוצע (שעות)',
+                    data: [24, 36, 12, 6, 8],
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Popular Courses Chart
+        const coursesCtx = document.getElementById('coursesChart').getContext('2d');
+        new Chart(coursesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['אלגוריתמים', 'מבני נתונים', 'מבוא למדעי המחשב', 'תכנות מונחה עצמים', 'אחר'],
+                datasets: [{
+                    data: [30, 25, 20, 15, 10],
+                    backgroundColor: [
+                        '#4dc9f6',
+                        '#f67019',
+                        '#f53794',
+                        '#537bc4',
+                        '#acc236'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+    }
+
+    function setupSearchFilters() {
+        // Lecturer search
+        const lecturerSearchInput = document.getElementById('lecturerSearchInput');
+        if (lecturerSearchInput) {
+            lecturerSearchInput.addEventListener('input', function() {
+                filterTable('lecturersTableBody', this.value);
+            });
+        }
+
+        // Student search
+        const studentSearchInput = document.getElementById('studentSearchInput');
+        if (studentSearchInput) {
+            studentSearchInput.addEventListener('input', function() {
+                filterTable('studentsTableBody', this.value);
+            });
+        }
+
+        // Course search
+        const courseSearchInput = document.getElementById('courseSearchInput');
+        if (courseSearchInput) {
+            courseSearchInput.addEventListener('input', function() {
+                filterTable('coursesTableBody', this.value);
+            });
+        }
+
+        // Course filter for students
+        const courseFilter = document.getElementById('courseFilter');
+        if (courseFilter) {
+            courseFilter.addEventListener('change', function() {
+                filterStudentsByCourse(this.value);
+            });
+        }
+
+        // Active students filter
+        const toggleActiveFilter = document.getElementById('toggleActiveFilter');
+        if (toggleActiveFilter) {
+            toggleActiveFilter.addEventListener('click', function() {
+                this.classList.toggle('btn-outline-secondary');
+                this.classList.toggle('btn-secondary');
+                filterStudentsByActive(this.classList.contains('btn-secondary'));
+            });
+        }
+    }
+
+    function filterTable(tableBodyId, query) {
+        const tableBody = document.getElementById(tableBodyId);
+        if (!tableBody) return;
+
+        const rows = tableBody.querySelectorAll('tr');
+        const lowercaseQuery = query.toLowerCase();
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(lowercaseQuery) ? '' : 'none';
+        });
+    }
+
+    function filterStudentsByCourse(courseId) {
+        const tableBody = document.getElementById('studentsTableBody');
+        if (!tableBody) return;
+
+        const rows = tableBody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            if (!courseId) {
+                row.style.display = '';
+                return;
+            }
+
+            const courses = row.dataset.courses.split(',');
+            row.style.display = courses.includes(courseId) ? '' : 'none';
+        });
+    }
+
+    function filterStudentsByActive(activeOnly) {
+        const tableBody = document.getElementById('studentsTableBody');
+        if (!tableBody) return;
+
+        const rows = tableBody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            if (!activeOnly) {
+                row.style.display = '';
+                return;
+            }
+
+            const isActive = row.dataset.active === 'true';
+            row.style.display = isActive ? '' : 'none';
+        });
+    }
+
+    function exportData() {
+        const exportType = document.getElementById('exportType').value;
+        const exportFormat = document.getElementById('exportFormat').value;
+        const dateFrom = document.getElementById('exportDateFrom').value;
+        const dateTo = document.getElementById('exportDateTo').value;
+
+        let url = `/export/${exportType}/?format=${exportFormat}`;
+        if (dateFrom) url += `&date_from=${dateFrom}`;
+        if (dateTo) url += `&date_to=${dateTo}`;
+
+        window.location.href = url;
+    }
+
+    function activateStudent(studentId) {
+        if (confirm('האם אתה בטוח שברצונך להפעיל את חשבון הסטודנט?')) {
+            fetch(`/activate-student/${studentId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('שגיאה בהפעלת החשבון: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('שגיאה בשליחת הבקשה');
+            });
+        }
+    }
+
+    function activateCourse(courseId) {
+        if (confirm('האם אתה בטוח שברצונך להפעיל את הקורס?')) {
+            fetch(`/activate-course/${courseId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('שגיאה בהפעלת הקורס: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('שגיאה בשליחת הבקשה');
+            });
+        }
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    }
+
+    // Handle student modals
+    document.addEventListener('DOMContentLoaded', function() {
+        // Edit Student Modal
+        const editStudentModal = document.getElementById('editStudentModal');
+        if (editStudentModal) {
+            editStudentModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const studentId = button.getAttribute('data-student-id');
+                const form = this.querySelector('form');
+                form.action = `/edit-student/${studentId}/`;
+
+                // You might want to load the student data via AJAX and populate the form
+                // This is optional depending on your requirements
+            });
+        }
+
+        // Assign Courses Modal
+        const assignCoursesModal = document.getElementById('assignCoursesModal');
+        if (assignCoursesModal) {
+            assignCoursesModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const studentId = button.getAttribute('data-student-id');
+                const form = this.querySelector('form');
+                form.action = `/assign-student-courses/${studentId}/`;
+
+                // You might want to load the student's current courses via AJAX
+                // This is optional
+            });
+        }
+
+        // Deactivate Student Modal
+        const deactivateStudentModal = document.getElementById('deactivateStudentModal');
+        if (deactivateStudentModal) {
+            deactivateStudentModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const studentId = button.getAttribute('data-student-id');
+                const form = this.querySelector('form');
+                form.action = `/deactivate-student/${studentId}/`;
+
+                // You might want to load the student name and display it in the modal
+                // const studentName = button.closest('tr').querySelector('td:first-child').textContent;
+                // this.querySelector('.student-name').textContent = studentName;
+            });
+        }
+    });
+
+    // Function to activate student (already exists in your code)
+    function activateStudent(studentId) {
+        if (confirm('האם אתה בטוח שברצונך להפעיל את חשבון הסטודנט?')) {
+            fetch(`/activate-student/${studentId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('שגיאה בהפעלת החשבון: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('שגיאה בשליחת הבקשה');
+            });
+        }
+    }
+</script>
+
+{% endblock %}

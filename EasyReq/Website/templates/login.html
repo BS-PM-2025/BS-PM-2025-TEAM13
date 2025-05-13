@@ -8,39 +8,51 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
     <div class="wrapper">
-        <h1>Login</h1>
-         <h4>Welcome to EasyReq</h4>
+        <h1>התחברות</h1>
+         <h4>EasyReq ברוכים הבאים ל</h4>
 
         <form action="{% url 'login' %}" method ="post">
             {% csrf_token %}
-            <!--{{ form }}-->
             <div class="input-box">
                 <input type="text"
                 name="username"
-                placeholder="username" required>
+                placeholder="שם משתמש" required>
                 <i class='bx bxs-user'></i>
             </div>
 
             <div class="input-box">
                 <input type="password"
                 name="password"
-                placeholder="password" required>
+                placeholder="סיסמה" required>
                 <i class='bx bxs-lock-alt' ></i>
             </div>
 
-            <button class="btn">Login</button>
+            <button class="btn">התחבר</button>
         </form>
 
         <div class="bottom-links">
             <div class="forgot-link">
-                <p><a href="/Website/reset_password/">Forgot Password?</a></p>
+                <p><a href="/reset_password/">שכחת סיסמה?</a></p>
             </div>
 
             <div class="register-link">
-                <p>Don't have an account? <a href="/Website/register/">Register</a></p>
+                <p>עדיין לא נרשמת? <a href="/register/">להרשמה</a></p>
             </div>
         </div>
+        {% if messages %}
+        <div class="messages container mt-3" style="display: flex; justify-content: center; width: 100%;">
+            {% for message in messages %}
+            <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert" style="color: red; text-align: center; position: absolute; transform: translateX(-50%); left: 50%;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
+
+<!-- Bootstrap JS (v5) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/login.js' %}"></script>
 
 {% endblock %}
+

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from . import views
 from django.contrib.auth import views as auth_views
+from .views import export_requests_excel
 
 urlpatterns = [
     path('register/', views.register_view, name = 'register'),
@@ -18,6 +19,7 @@ urlpatterns = [
     path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view
          (template_name="password_reset_done.html"), name= "password_reset_complete"),
     path('profile/', views.profile_view, name='profile'),
+
     path('registration-success/<int:user_id>/', views.registration_success, name='registration_success'),
     path('requests/', views.list_requests, name='list_requests'),
     path('requests/create/', views.create_request, name='create_request'),
@@ -41,4 +43,14 @@ urlpatterns = [
     #path('edit-course/<int:course_id>/', views.edit_course, name='edit_course'),
     #path('assign-course-lecturers/<int:course_id>/', views.assign_course_lecturers, name='assign_course_lecturers'),
     # path('send-message/', views.send_message, name='send_message'),
+    path('requests/export/csv/', views.export_requests_csv, name='export_requests_csv'),
+    path('requests/export/excel/', views.export_requests_excel, name='export_requests_excel'),
+
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('dashboard/export/excel/', views.export_dashboard_excel, name='export_dashboard_excel'),
+    
+    path('mark_notification_read/', views.mark_notification_read, name='mark_notification_read'),
+    path('mark_all_notifications_read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    path('all_notifications/', views.all_notifications, name='all_notifications'),
+    path('toggle_notification_status/', views.toggle_notification_status, name='toggle_notification_status'),
 ]

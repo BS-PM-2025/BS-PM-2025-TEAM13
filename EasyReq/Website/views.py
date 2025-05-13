@@ -833,3 +833,241 @@ def export_requests_excel(request):
     response['Content-Disposition'] = 'attachment; filename="Requests_export.xlsx"'
 
     return response
+
+
+
+@login_required()
+def dashboard(request):
+    user = request.user
+    today = timezone.now()
+    thirty_days_ago = today - timezone.timedelta(days=30)
+    
+    if user.role == 0:  # Student
+        base_queryset = Request.objects.filter(student=user)
+    else:  # Staff, lecturers, deanery
+        base_query = models.Q(assigned_to=user) | models.Q(viewers=user)
+
+        if user.role == 1:  # Lecturer
+            base_queryset = Request.objects.filter(
+                models.Q(assigned_to=user) | models.Q(viewers=user)
+            ).distinct()
+        elif user.role in [2, 3]:  # Staff, deanery - all requests
+            base_query |= models.Q()
+
+        base_queryset = Request.objects.filter(base_query).distinct()
+    
+    filtered_queryset = filter_requests(request, base_queryset)
+    
+    total_requests = filtered_queryset.count()
+    pending_requests = filtered_queryset.filter(status=0).count()
+    approved_requests = filtered_queryset.filter(status=1).count()
+    rejected_requests = filtered_queryset.filter(status=2).count()
+    
+    context = {
+        'total_requests': total_requests,
+        'pending_requests': pending_requests,
+        'approved_requests': approved_requests,
+        'rejected_requests': rejected_requests,
+        'total_users': User.objects.count(),
+        'departments': Department.objects.all(),  
+    }
+    
+    if user.role == 0:  # Student
+        recent_requests = filtered_queryset.order_by('-created')[:5]
+        status_counts = [pending_requests, approved_requests, rejected_requests]
+
+        context.update({
+            'recent_requests': recent_requests,
+            'status_counts': status_counts,
+        })
+    else:  # Staff, lecturers, deanery
+        # SLA statistics
+        overdue_requests = [req for req in filtered_queryset.filter(status=0) if req.get_sla_status() == "בחריגה"]
+        at_risk_requests = [req for req in filtered_queryset.filter(status=0) if req.get_sla_status() == "בסיכון"]
+
+        # Recently assigned requests
+        assigned_requests = filtered_queryset.filter(assigned_to=user, status=0).order_by('-created')[:5]
+
+        # Recent activity
+        recent_status_updates = RequestStatus.objects.filter(
+            request__in=filtered_queryset).select_related('request', 'updated_by').order_by('-timestamp')[:10]
+
+        # Last 30 days statistics
+        recent_requests = filtered_queryset.filter(created__gte=thirty_days_ago)
+        recent_resolved = recent_requests.filter(status__in=[1, 2])
+        avg_resolution_time = 0
+
+        if recent_resolved.exists():
+            resolution_times = []
+            for req in recent_resolved:
+                if req.resolved_date:
+                    delta = req.resolved_date - req.created
+                    resolution_times.append(delta.total_seconds() / 3600)  # in hours
+
+            if resolution_times:
+                avg_resolution_time = sum(resolution_times) / len(resolution_times)
+
+        if user.role in [2, 3]:  
+            dept_counts = {}
+            departments = Department.objects.all()
+            for dept in departments:
+                dept_counts[dept.name] = filtered_queryset.filter(dept=dept).count()
+        else:
+            dept_counts = None
+
+        status_counts = [pending_requests, approved_requests, rejected_requests]
+
+        # Pipeline status counts for chart
+        pipeline_counts = []
+        pipeline_statuses = dict(Request.PIPELINE_STATUSES)
+        for status_value in sorted(pipeline_statuses.keys()):
+            count = filtered_queryset.filter(pipeline_status=status_value).count()
+            pipeline_counts.append({'status': pipeline_statuses[status_value], 'count': count})
+            
+        if user.role == 2 and user.department:  
+            department = user.department
+            
+            this_month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            last_month_start = (this_month_start - timezone.timedelta(days=1)).replace(day=1)
+            
+            dept_requests = Request.objects.filter(dept=department)
+            this_month_requests = dept_requests.filter(created__gte=this_month_start).count()
+            last_month_requests = dept_requests.filter(created__gte=last_month_start, created__lt=this_month_start).count()
+            
+            if last_month_requests > 0:
+                month_change_pct = ((this_month_requests - last_month_requests) / last_month_requests) * 100
+            else:
+                month_change_pct = 100 if this_month_requests > 0 else 0
+            
+            lecturer_count = User.objects.filter(department=department, role=1, is_active=True).count()
+            student_count = User.objects.filter(department=department, role=0).count()
+            course_count = Course.objects.filter(dept=department).count()
+            
+            pending_lecturers = User.objects.filter(role=1, is_active=False, department=department).count()
+            
+            courses = Course.objects.filter(dept=department)
+            course_data = []
+            for course in courses:
+                course_lecturers = User.objects.filter(courses=course, role=1)
+                student_count_course = User.objects.filter(courses=course, role=0).count()
+                request_count = Request.objects.filter(course=course).count()
+                
+                course_data.append({
+                    'course': course,
+                    'lecturers': course_lecturers[:3],  # 3 המרצים הראשונים
+                    'lecturer_count': course_lecturers.count(),
+                    'student_count': student_count_course,
+                    'request_count': request_count
+                })
+            
+            stats = {
+                'total_requests': total_requests,
+                'this_month_requests': this_month_requests,
+                'month_change_pct': round(month_change_pct, 1),
+                'lecturer_count': lecturer_count,
+                'student_count': student_count,
+                'course_count': course_count,
+                'overdue_count': len(overdue_requests),
+                'at_risk_count': len(at_risk_requests),
+            }
+            
+            context.update({
+                'stats': stats,
+                'pending_count': pending_lecturers,
+                'courses': courses,
+                'course_data': course_data,
+            })
+
+        context.update({
+            'assigned_requests': assigned_requests,
+            'overdue_count': len(overdue_requests),
+            'at_risk_count': len(at_risk_requests),
+            'recent_status_updates': recent_status_updates,
+            'avg_resolution_time': round(avg_resolution_time, 1),
+            'dept_counts': dept_counts,
+            'status_counts': status_counts,
+            'pipeline_counts': pipeline_counts,
+        })
+
+    return render(request, 'dashboard.html', context)
+
+
+@login_required
+def export_dashboard_excel(request):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
+    import io
+
+    user = request.user
+
+    if user.role == 0:  # Student
+        base_queryset = Request.objects.filter(student=user)
+    elif user.role in [1, 2, 3]:
+        base_queryset = Request.objects.filter(
+            Q(assigned_to=user) | Q(viewers=user)
+        ).distinct()
+        if user.role in [2, 3]:
+            base_queryset = Request.objects.all()
+    else:
+        base_queryset = Request.objects.none()
+
+    filtered_queryset = filter_requests(request, base_queryset)
+    
+    total_requests = filtered_queryset.count()
+    pending_requests = filtered_queryset.filter(status=0).count()
+    approved_requests = filtered_queryset.filter(status=1).count()
+    rejected_requests = filtered_queryset.filter(status=2).count()
+
+    overdue_count = len([r for r in filtered_queryset.filter(status=0) if r.get_sla_status() == "בחריגה"])
+    at_risk_count = len([r for r in filtered_queryset.filter(status=0) if r.get_sla_status() == "בסיכון"])
+    on_time_count = pending_requests - overdue_count - at_risk_count
+    avg_resolution_time = 0
+
+    recent_resolved = filtered_queryset.filter(status__in=[1, 2])
+    if recent_resolved.exists():
+        resolution_times = [
+            (r.resolved_date - r.created).total_seconds() / 3600
+            for r in recent_resolved if r.resolved_date
+        ]
+        if resolution_times:
+            avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Dashboard Stats"
+
+    headers = ["מדד", "ערך"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+
+    data = [
+        ("סה\"כ בקשות", total_requests),
+        ("בקשות בטיפול", pending_requests),
+        ("בקשות שאושרו", approved_requests),
+        ("בקשות שנדחו", rejected_requests),
+        ("חורגות מזמן", overdue_count),
+        ("בקשות בסיכון", at_risk_count),
+        ("בקשות בזמן", on_time_count),
+        ("זמן טיפול ממוצע (שעות)", avg_resolution_time),
+    ]
+
+    for row in data:
+        ws.append(row)
+
+    for col in ws.columns:
+        max_length = max(len(str(cell.value)) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max_length + 5
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=dashboard_stats.xlsx'
+    return response
+

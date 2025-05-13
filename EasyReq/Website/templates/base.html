@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>EasyReq | מערכת ניהול בקשות</title>
+  <link rel="stylesheet" href="/static/css/chatbot-widget.css">
+  <script src="/static/js/chatbot-widget.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
     body {
@@ -513,6 +515,7 @@ function getCSRFToken() {
  })();
 
 function markAllAsRead() {
+  // קבלת ה-CSRF טוקן
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
   fetch('/mark_all_notifications_read/', {
@@ -525,6 +528,7 @@ function markAllAsRead() {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
+      // רענון הדף להצגת המצב החדש
       location.reload();
     }
   });
@@ -533,3 +537,5 @@ function markAllAsRead() {
 </script>
 </body>
 </html>
+
+

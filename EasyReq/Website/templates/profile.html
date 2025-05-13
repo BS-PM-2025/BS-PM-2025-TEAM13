@@ -5,159 +5,176 @@
 
 {% block content %}
 <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-<link rel="stylesheet" href="{% static 'css/profile.css' %}">
 
-<div class="wrapper">
-    <h1>פרופיל</h1>
+<style>
+  body {
+    background-color: #eaf0fb;
+    font-family: 'Calibri', sans-serif;
+    direction: rtl;
+  }
 
-    <!-- success message -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="success-message" style="color: #4CAF50; text-align: center; margin-bottom: 10px;">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
+  .container-box {
+    max-width: 560px;
+    margin: 60px auto;
+    background: #fff;
+    border-radius: 20px;
+    padding: 50px 40px;
+    box-shadow: 0 12px 40px rgba(46, 70, 122, 0.3);
+    text-align: center;
+  }
 
-    <form method="POST" enctype="multipart/form-data" id="imageUploadForm">
-        {% csrf_token %}
-        <div class="profile-pic-container" style="position: relative;">
-            <img id="profileImage"
-                 src="{% if user.profile_pic %}{{ user.profile_pic.url }}{% else %}{% static 'images/profile.png' %}{% endif %}"
-                 alt="Profile Picture" class="profile-pic">
+  .profile-pic-container {
+    display: inline-block;
+    margin-bottom: 25px;
+    text-align: center;
+  }
 
-            <label for="profilePicInput" class="edit-icon" style="
-                position: absolute;
-                bottom: 0;
-                right: 10px;
-                background-color: #2e7eff;
-                border-radius: 50%;
-                padding: 8px;
-                cursor: pointer;
-                box-shadow: 0 0 5px rgba(0,0,0,0.2);">
-                {% if user.profile_pic %}
-                    <i class='bx bx-edit' style="color: white; font-size: 18px;"></i>
-                {% else %}
-                    <i class='bx bx-plus' style="color: white; font-size: 18px;"></i>
-                {% endif %}
-            </label>
+  .profile-pic {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ccc;
+    display: block;
+    margin: 0 auto;
+  }
 
-            <input type="file" id="profilePicInput" name="profile_pic" accept="image/*" style="display: none;">
-        </div>
-    </form>
+  .input-box {
+    margin-bottom: 20px;
+    position: relative;
+    width: 100%;
+  }
 
+  .input-box input {
+    width: 100%;
+    padding: 14px 14px 14px 44px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+  }
+
+  .input-box i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aaa;
+    font-size: 20px;
+  }
+
+  .btn-home {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    background-color: #5a75f8;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    border-radius: 8px;
+    transition: background 0.3s;
+    margin-top: 12px;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-home:hover {
+    background-color: #4158d0;
+  }
+
+  .success-message {
+    color: #4CAF50;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+</style>
+
+<div class="container-box">
+  <h2>הפרופיל שלי</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="success-message">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data">
+  {% csrf_token %}
+  <label for="profile_pic" class="profile-pic-container">
+  {% if user.profile_pic and user.profile_pic.url and "profile.png" not in user.profile_pic.name %}
+    <img src="{{ user.profile_pic.url }}" alt="Profile" class="profile-pic" id="preview-pic">
+  {% else %}
+    <img src="{% static 'images/profile.png' %}" alt="Profile" class="profile-pic" id="preview-pic">
+  {% endif %}
+  <input type="file" name="profile_pic" id="profile_pic" accept="image/*" style="display: none;" onchange="this.form.submit();">
+</label>
+
+</form>
+
+
+  <div class="input-box">
+    <input type="text" value="{{ user.username }}" disabled>
+    <i class='bx bxs-user'></i>
+  </div>
+
+  <div class="input-box">
+    <input type="email" value="{{ user.email }}" disabled>
+    <i class='bx bx-envelope'></i>
+  </div>
+
+  <div class="input-box">
+    <input type="text" value="{{ user.first_name }} {{ user.last_name }}" disabled>
+    <i class='bx bxs-user'></i>
+  </div>
+
+  <div class="input-box">
+    <input type="text" value="{{ user.department }}" disabled>
+    <i class='bx bxs-building-house'></i>
+  </div>
+
+  <div class="input-box">
+    <input type="text" value="{{ user.get_role_display }}" disabled>
+    <i class='bx bxs-id-card'></i>
+  </div>
+
+  <button type="button" onclick="togglePasswordForm()" class="btn-home">עדכון סיסמה</button>
+
+  <form method="POST" id="passwordForm" style="display: none; margin-top: 20px;">
+    {% csrf_token %}
     <div class="input-box">
-        <label><strong>:שם משתמש</strong></label>
-        <input type="text" value="{{ user.username }}" disabled>
-        <i class='bx bxs-user'></i>
+      <input type="password" name="old_password" placeholder="סיסמה נוכחית" required>
+      <i class='bx bxs-lock'></i>
     </div>
-
     <div class="input-box">
-        <label><strong>:מייל</strong></label>
-        <input type="email" value="{{ user.email }}" disabled>
-        <i class='bx bxs-envelope'></i>
+      <input type="password" name="new_password1" placeholder="סיסמה חדשה" required>
+      <i class='bx bxs-lock'></i>
     </div>
-
     <div class="input-box">
-        <label><strong>:שם מלא</strong></label>
-        <input type="text" value="{{ user.first_name }} {{ user.last_name }}" disabled>
-        <i class='bx bxs-user'></i>
+      <input type="password" name="new_password2" placeholder="חזרה על הסיסמה החדשה" required>
+      <i class='bx bxs-lock'></i>
     </div>
+    <button type="submit" class="btn-home">עדכן</button>
+  </form>
 
-    <div class="input-box">
-        <label><strong>:מחלקה</strong></label>
-        <input type="text" value="{{ user.department }}" disabled>
-        <i class='bx bxs-building-house'></i>
-    </div>
-
-    <div class="input-box">
-        <label><strong>:תפקיד</strong></label>
-        <input type="text" value="{{ user.get_role_display }}" disabled>
-        <i class='bx bxs-id-card'></i>
-    </div>
-
-    <div style="text-align: center; margin-top: 20px;">
-        <button type="button" onclick="toggleCourses()" class="btn">הקורסים שלי</button>
-    </div>
-
-    <div id="coursesContainer" style="display: none; text-align: center; margin-top: 20px;">
-        <h3>הקורסים שלך:</h3>
-        <ul>
-            {% for course in user.courses.all %}
-                <li>{{ course.name }}</li>
-            {% empty %}
-                <li>אין לך קורסים.</li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <div style="text-align: center; margin-top: 20px;">
-        <button type="button" onclick="togglePasswordForm()" class="btn">עדכון סיסמה</button>
-    </div>
-
-    <form method="POST" id="passwordForm" style="display: none; margin-top: 20px;">
-        {% csrf_token %}
-        <h3 style="text-align:center;">עדכון סיסמה</h3>
-        <div class="input-box">
-            <input type="password" name="old_password" placeholder="סיסמה נוכחית" required>
-        </div>
-        <div class="input-box">
-            <input type="password" name="new_password1" placeholder="סיסמה חדשה" required>
-        </div>
-        <div class="input-box">
-            <input type="password" name="new_password2" placeholder="חזרה על הסיסמה החדשה" required>
-        </div>
-        <button type="submit" class="btn">עדכן</button>
-    </form>
-
-    <div style="text-align: center; margin-top: 20px;">
-    <button type="button" onclick="window.location.href='{% url 'home' %}'" class="btn">חזרה לדף הבית</button>
-</div>
-
+  <button type="button" onclick="window.location.href='{% url 'home' %}'" class="btn-home">חזרה לדף הבית</button>
 </div>
 
 <script>
-    function togglePasswordForm() {
-        const passwordForm = document.getElementById("passwordForm");
-        passwordForm.style.display = (passwordForm.style.display === "none" || passwordForm.style.display === "") ? "block" : "none";
-    }
-
-    function toggleEmailForm() {
-        const emailForm = document.getElementById("emailForm");
-        emailForm.style.display = (emailForm.style.display === "none" || emailForm.style.display === "") ? "block" : "none";
-    }
-
-    const profileInput = document.getElementById('profilePicInput');
-    const image = document.getElementById('profileImage');
-    const form = document.getElementById('imageUploadForm');
-
-    profileInput.addEventListener('change', function () {
-        if (this.files.length > 0) {
-            const formData = new FormData(form);
-            fetch("{% url 'profile' %}", {
-                method: "POST",
-                body: formData,
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    image.src = URL.createObjectURL(this.files[0]);
-                    alert("Profile picture updated successfully!");
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Something went wrong.");
-            });
-        }
-    });
-
-    function toggleCourses() {
-    const coursesContainer = document.getElementById("coursesContainer");
-    coursesContainer.style.display = (coursesContainer.style.display === "none" || coursesContainer.style.display === "") ? "block" : "none";
+function togglePasswordForm() {
+  const passwordForm = document.getElementById("passwordForm");
+  passwordForm.style.display = passwordForm.style.display === "none" ? "block" : "none";
 }
 
+
+function previewProfilePicture(event) {
+  const reader = new FileReader();
+  reader.onload = function(){
+    const output = document.getElementById('preview-pic');
+    output.src = reader.result;
+  };
+  reader.readAsDataURL(event.target.files[0]);
+}
 </script>
 {% endblock %}

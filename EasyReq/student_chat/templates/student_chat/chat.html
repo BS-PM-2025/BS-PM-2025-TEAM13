@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>צ'אט בוט לבקשות סטודנטים</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        .chat-header {
+            background-color: #0056b3;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+        }
+        .bot-message {
+            background-color: #f1f0f0;
+            align-self: flex-start;
+        }
+        .user-message {
+            background-color: #0078ff;
+            color: white;
+            align-self: flex-end;
+        }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        #chat-message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+        #chat-message-submit {
+            margin-right: 10px;
+            padding: 10px 20px;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .thinking {
+            font-style: italic;
+            color: #888;
+        }
+        ul {
+            text-align: right;
+            margin-right: 20px;
+            padding-right: 20px;
+        }
+        .option-button {
+            display: inline-block;
+            margin: 3px;
+            padding: 8px 12px;
+            background-color: #0078ff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap; /* מניעת שבירת שורה בתוך הכפתור */
+            max-width: 200px; /* רוחב מקסימלי לכפתור */
+        }
+        .option-button:hover {
+            background-color: #0056b3;
+        }
+        @media (max-width: 600px) {
+            .option-button {
+                font-size: 12px;
+                padding: 6px 10px;
+                margin: 2px;
+            }
+        }
+        .options-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 10px;
+            gap: 8px; /* רווח בין כפתורים */
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>עוזר וירטואלי לבקשות סטודנטים</h2>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                שלום! אני העוזר הווירטואלי של מערכת בקשות הסטודנטים. איך אוכל לעזור לך היום?
+
+                <div class="options-container">
+                    <button class="option-button" onclick="selectOption('הגשת ערעור על ציון')">הגשת ערעור על ציון</button>
+                    <button class="option-button" onclick="selectOption('בקשה למועד מיוחד')">בקשה למועד מיוחד</button>
+                    <button class="option-button" onclick="selectOption('שקלול עבודה בית בציון הסופי')">שקלול עבודה בית בציון הסופי</button>
+                    <button class="option-button" onclick="selectOption('דחיית הגשת עבודה')">דחיית הגשת עבודה</button>
+                    <button class="option-button" onclick="selectOption('שחרור מחובת הרשמה')">שחרור מחובת הרשמה</button>
+                    <button class="option-button" onclick="selectOption('בקשה לפטור מקורס')">בקשה לפטור מקורס</button>
+                    <button class="option-button" onclick="selectOption('ערעור על ציון')">ערעור על ציון</button>
+                    <button class="option-button" onclick="selectOption('בקשה לפטור מעבודת הגשה')">בקשה לפטור מעבודת הגשה</button>
+                    <button class="option-button" onclick="selectOption('בקשה לפטור מדרישת קדם')">בקשה לפטור מדרישת קדם</button>
+                    <button class="option-button" onclick="selectOption('בקשה לחריגה מיוחדת - דיקאנט')">בקשה לחריגה מיוחדת - דיקאנט</button>
+                    <button class="option-button" onclick="selectOption('מידע על סטטוס בקשות')">מידע על סטטוס בקשות</button>
+                    <button class="option-button" onclick="selectOption('עזרה בניסוח בקשות')">עזרה בניסוח בקשות</button>
+                    <button class="option-button" onclick="selectOption('מידע על תהליך הגשת בקשות')">מידע על תהליך הגשת בקשות</button>
+                </div>
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chat-message-input" placeholder="הקלד את שאלתך כאן...">
+            <button id="chat-message-submit">שלח</button>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('#chat-message-input').focus();
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {  // Enter key
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+
+        // פונקציה לטיפול בלחיצה על כפתור אפשרות
+        function selectOption(option) {
+            // הצגת האפשרות שנבחרה כהודעת משתמש
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add('user-message');
+            messageElement.textContent = option;
+
+            document.querySelector('#chat-messages').appendChild(messageElement);
+
+            // חיפוש תגובה מתאימה בהתאם לאפשרות שנבחרה
+            handleOptionSelection(option);
+
+            // גלילה לתחתית הצ'אט
+            const chatMessages = document.querySelector('#chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // פונקציה לטיפול באפשרויות שנבחרו
+        function handleOptionSelection(option) {
+            // הצגת "חושב..." בזמן שממתינים לתשובה
+            const thinkingElement = document.createElement('div');
+            thinkingElement.classList.add('message');
+            thinkingElement.classList.add('bot-message');
+            thinkingElement.classList.add('thinking');
+            thinkingElement.textContent = "חושב...";
+            thinkingElement.id = "thinking-message";
+
+            document.querySelector('#chat-messages').appendChild(thinkingElement);
+
+            let response = "";
+
+            // מוצא את התשובה המתאימה בהתאם לאפשרות שנבחרה
+            switch (option) {
+                case 'הגשת ערעור על ציון':
+                    // אפשר להחליף את זה בתוכן שאת רוצה
+                    sendMessageToServer(option);
+                    break;
+
+                case 'בקשה להארכת זמן':
+                    // אפשר להחליף את זה בתוכן שאת רוצה
+                    sendMessageToServer(option);
+                    break;
+
+                case 'מידע על סטטוס בקשות':
+                    // אפשר להחליף את זה בתוכן שאת רוצה
+                    sendMessageToServer(option);
+                    break;
+
+                case 'עזרה בניסוח בקשות':
+                    response = "באיזה סוג של בקשה אתה צריך עזרה בניסוח?<div class='options-container'><button class='option-button' onclick=\"selectOption('ניסוח ערעור על ציון')\">ערעור על ציון</button><button class='option-button' onclick=\"selectOption('ניסוח בקשה להארכת זמן')\">בקשה להארכת זמן</button><button class='option-button' onclick=\"selectOption('ניסוח בקשה לקבלת מלגה')\">בקשה לקבלת מלגה</button></div>";
+
+                    // הסרת הודעת "חושב..."
+                    const thinkingMsg = document.getElementById('thinking-message');
+                    if (thinkingMsg) {
+                        thinkingMsg.remove();
+                    }
+
+                    // הצגת התשובה
+                    const botMessageElement = document.createElement('div');
+                    botMessageElement.classList.add('message');
+                    botMessageElement.classList.add('bot-message');
+                    botMessageElement.innerHTML = response;
+
+                    document.querySelector('#chat-messages').appendChild(botMessageElement);
+                    break;
+
+                case 'ניסוח ערעור על ציון':
+                case 'ניסוח בקשה להארכת זמן':
+                case 'ניסוח בקשה לקבלת מלגה':
+                    sendMessageToServer(option);
+                    break;
+
+                case 'מידע על תהליך הגשת בקשות':
+                    sendMessageToServer(option);
+                    break;
+
+                default:
+                    sendMessageToServer(option);
+            }
+        }
+
+        function sendMessageToServer(message) {
+            // שליחת ההודעה לשרת
+            fetch('/student_chat/get-response/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    'message': message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // הסרת הודעת "חושב..."
+                const thinkingMsg = document.getElementById('thinking-message');
+                if (thinkingMsg) {
+                    thinkingMsg.remove();
+                }
+
+                // הוספת תשובת הבוט לצ'אט
+                const botMessageElement = document.createElement('div');
+                botMessageElement.classList.add('message');
+                botMessageElement.classList.add('bot-message');
+
+                // טיפול בטקסט התשובה - וידוא שהוא מחרוזת
+                let responseText = "";
+                if (data && data.response) {
+                    responseText = data.response;
+                    // החלפת ירידות שורה ב-<br>
+                    if (typeof responseText === 'string') {
+                        responseText = responseText.replace(/\n/g, '<br>');
+                    }
+                } else {
+                    responseText = "אירעה שגיאה. אנא נסה שוב.";
+                }
+
+                botMessageElement.innerHTML = responseText;
+
+                document.querySelector('#chat-messages').appendChild(botMessageElement);
+
+                // גלילה לתחתית הצ'אט
+                const chatMessages = document.querySelector('#chat-messages');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => {
+                console.error('שגיאה:', error);
+                // הסרת הודעת "חושב..."
+                const thinkingMsg = document.getElementById('thinking-message');
+                if (thinkingMsg) {
+                    thinkingMsg.remove();
+                }
+
+                // הצגת הודעת שגיאה
+                const errorElement = document.createElement('div');
+                errorElement.classList.add('message');
+                errorElement.classList.add('bot-message');
+                errorElement.textContent = "אירעה שגיאה בתקשורת. נא לנסות שוב.";
+
+                document.querySelector('#chat-messages').appendChild(errorElement);
+            });
+        }
+
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#chat-message-input');
+            const message = messageInputDom.value;
+
+            if (message.trim() === '') return;
+
+            // הצגת הודעת המשתמש בצ'אט
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add('user-message');
+            messageElement.textContent = message;
+
+            document.querySelector('#chat-messages').appendChild(messageElement);
+
+            // הצגת "חושב..." בזמן שממתינים לתשובה
+            const thinkingElement = document.createElement('div');
+            thinkingElement.classList.add('message');
+            thinkingElement.classList.add('bot-message');
+            thinkingElement.classList.add('thinking');
+            thinkingElement.textContent = "חושב...";
+            thinkingElement.id = "thinking-message"; // הוספת ID לזיהוי קל יותר
+
+            document.querySelector('#chat-messages').appendChild(thinkingElement);
+
+            // שליחת ההודעה לשרת
+            fetch('/student_chat/get-response/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    'message': message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // הסרת הודעת "חושב..."
+                const thinkingMsg = document.getElementById('thinking-message');
+                if (thinkingMsg) {  // בדיקה שהאלמנט קיים
+                    thinkingMsg.remove();
+                }
+
+                // הוספת תשובת הבוט לצ'אט
+                const botMessageElement = document.createElement('div');
+                botMessageElement.classList.add('message');
+                botMessageElement.classList.add('bot-message');
+
+                // טיפול בטקסט התשובה - וידוא שהוא מחרוזת
+                let responseText = "";
+                if (data && data.response) {
+                    responseText = data.response;
+                    // החלפת ירידות שורה ב-<br>
+                    if (typeof responseText === 'string') {
+                        responseText = responseText.replace(/\n/g, '<br>');
+                    }
+                } else {
+                    responseText = "אירעה שגיאה. אנא נסה שוב.";
+                }
+
+                botMessageElement.innerHTML = responseText;
+
+                document.querySelector('#chat-messages').appendChild(botMessageElement);
+
+                // גלילה לתחתית הצ'אט
+                const chatMessages = document.querySelector('#chat-messages');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => {
+                console.error('שגיאה:', error);
+                // הסרת הודעת "חושב..."
+                const thinkingMsg = document.getElementById('thinking-message');
+                if (thinkingMsg) {  // בדיקה שהאלמנט קיים
+                    thinkingMsg.remove();
+                }
+
+                // הצגת הודעת שגיאה
+                const errorElement = document.createElement('div');
+                errorElement.classList.add('message');
+                errorElement.classList.add('bot-message');
+                errorElement.textContent = "אירעה שגיאה בתקשורת. נא לנסות שוב.";
+
+                document.querySelector('#chat-messages').appendChild(errorElement);
+            });
+
+            // ניקוי שדה הקלט
+            messageInputDom.value = '';
+
+            // גלילה לתחתית הצ'אט
+            const chatMessages = document.querySelector('#chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+
+        // פונקציית עזר לקבלת ערך העוגייה
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

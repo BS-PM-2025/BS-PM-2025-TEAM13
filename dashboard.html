@@ -1,0 +1,1060 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard | EasyReq {% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body {
+    background-color: #eaf0fb;
+    font-family: 'Calibri', sans-serif;
+    direction: rtl;
+  }
+
+  .container-box {
+    max-width: 1400px;
+    margin: 60px auto;
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 12px 40px rgba(46, 70, 122, 0.7);
+  }
+
+  .section-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2d6cdf;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+
+  .stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 30px;
+  }
+
+  .stat-card {
+    flex: 1;
+    min-width: 200px;
+    max-width: 250px;
+    background: #fff;
+    border-radius: 15px;
+    padding: 20px 15px;
+    margin: 0 10px 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-card.primary { border-top: 4px solid #2d6cdf; }
+  .stat-card.warning { border-top: 4px solid #dcd767; }
+  .stat-card.success { border-top: 4px solid #39a653; }
+  .stat-card.danger { border-top: 4px solid #e6959c; }
+  .stat-card.info { border-top: 4px solid #17a2b8; }
+
+  .stat-card .stat-title {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 10px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  .stat-card.primary .stat-value { color: #2d6cdf; }
+  .stat-card.warning .stat-value { color: #d3b600; }
+  .stat-card.success .stat-value { color: #39a653; }
+  .stat-card.danger .stat-value { color: #e6959c; }
+  .stat-card.info .stat-value { color: #17a2b8; }
+
+  .stat-card .stat-icon {
+    font-size: 24px;
+    margin-bottom: 15px;
+  }
+
+  .stat-card.primary .stat-icon { color: #2d6cdf; }
+  .stat-card.warning .stat-icon { color: #d3b600; }
+  .stat-card.success .stat-icon { color: #39a653; }
+  .stat-card.danger .stat-icon { color: #e6959c; }
+  .stat-card.info .stat-icon { color: #17a2b8; }
+
+.charts-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px; /* ריווח אחיד */
+}
+
+.chart-container {
+  flex: 1 1 48%; /* פחות מ־50% כדי לא ליפול שורה */
+  max-width: 48%;
+}
+
+
+  .chart-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2d6cdf;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .canvas-container {
+    position: relative;
+    height: 250px;
+    max-height: 250px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+
+  .data-table th {
+    background-color: #f2f4f8;
+    border: 1px solid #ccc;
+    padding: 12px;
+    text-align: right;
+  }
+
+  .data-table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    vertical-align: middle;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: #f5f5f5;
+  }
+
+  .badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: white;
+    display: inline-block;
+  }
+
+  .badge-warning { background-color: #dcd767; }
+  .badge-success { background-color: #39a653; }
+  .badge-danger { background-color: #e6959c; }
+  .badge-secondary { background-color: #909daa; }
+  .badge-info { background-color: #17a2b8; }
+  .badge-primary { background-color: #2d6cdf; }
+
+  .btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-action {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-primary {
+    background-color: #2d6cdf;
+    color: white;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background-color: #1a56c5;
+    color: white;
+  }
+
+  .btn-outline-primary {
+    color: #2d6cdf;
+    background-color: transparent;
+    border: 1px solid #2d6cdf;
+  }
+  
+  .btn-outline-primary:hover {
+    background-color: #2d6cdf;
+    color: white;
+  }
+  
+  .btn-outline-secondary {
+    color: #6c757d;
+    background-color: transparent;
+    border: 1px solid #6c757d;
+  }
+  
+  .btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  .sla-section {
+    background: #f9f9f9;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+  }
+
+  .sla-item {
+    text-align: center;
+    padding: 15px;
+    flex: 1;
+    min-width: 120px;
+    max-width: 180px;
+  }
+
+  .sla-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .sla-overdue .sla-value { color: #e6959c; }
+  .sla-atrisk .sla-value { color: #dcd767; }
+  .sla-ontrack .sla-value { color: #39a653; }
+
+  .sla-label {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .timeline {
+    position: relative;
+    padding-right: 30px;
+  }
+
+  .timeline:before {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-right: 30px;
+    padding-bottom: 20px;
+  }
+
+  .timeline-item:last-child {
+    padding-bottom: 0;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    right: -9px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #2d6cdf;
+  }
+
+  .timeline-item-content {
+    background: #f2f4f8;
+    border-radius: 8px;
+    padding: 15px;
+    margin-right: 15px;
+  }
+
+  .timeline-item-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .timeline-item-title {
+    font-weight: bold;
+    color: #333;
+  }
+
+  .timeline-item-date {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .progress-container {
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    height: 8px;
+    margin: 10px 0;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 1s ease;
+  }
+
+  .progress-bar-danger { background-color: #e6959c; }
+  .progress-bar-warning { background-color: #dcd767; }
+  .progress-bar-success { background-color: #39a653; }
+
+  /* Compact table styles */
+  .compact-table {
+    font-size: 14px;
+  }
+  
+  .compact-table th, .compact-table td {
+    padding: 6px 8px;
+  }
+  
+  .compact-table .badge {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .request-link {
+    color: #2d6cdf;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  
+  .request-link:hover {
+    text-decoration: underline;
+  }
+  
+  /* Compact timeline styles */
+  .compact-timeline .timeline-item {
+    padding-bottom: 10px;
+  }
+  
+  .compact-timeline .timeline-item-content {
+    padding: 10px;
+  }
+  
+  .compact-timeline .timeline-item-header {
+    margin-bottom: 5px;
+  }
+  
+  .compact-timeline .timeline-item::before {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* עיצוב טופס הסינון */
+  .filter-section {
+    margin-bottom: 20px;
+    background: #f9f9f9;
+    border-radius: 15px;
+    padding: 15px;
+  }
+  
+ .filter-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+  
+  .filter-panel {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .filter-form {
+    width: 100%;
+  }
+  
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px 15px;
+  }
+  
+  .filter-col {
+    flex: 1;
+    min-width: 200px;
+    padding: 0 10px;
+    margin-bottom: 10px;
+  }
+  
+  input[type="date"].form-control {
+  height: 38px; /* תואם את select */
+  padding: 6px 12px;
+  line-height: 1.5;
+  font-size: 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  background-color: #fff;
+  box-sizing: border-box;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  padding-left: 4px;
+  margin-right: -4px;
+  cursor: pointer;
+}
+
+input[type="date"] {
+  appearance: none;
+  -moz-appearance: none;
+  text-align: right;
+}
+
+
+  .filter-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  
+  .form-control {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+
+  /* Media Queries */
+  @media (max-width: 1400px) {
+    .stats-container {
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .chart-container {
+      max-width: 100%;
+      flex: 0 0 100%;
+    }
+    
+    .canvas-container {
+      max-width: 400px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .container-box {
+      padding: 20px;
+      margin: 20px auto;
+    }
+    
+    .stat-card {
+      max-width: 100%;
+      margin: 0 0 15px;
+    }
+    
+    .canvas-container {
+      height: 200px;
+    }
+    
+    .chart-container {
+      margin: 0 0 20px;
+    }
+    
+    .filter-col {
+      flex: 0 0 100%;
+    }
+  }
+
+  a.btn-export {
+  padding: 10px 18px;
+  font-size: 16px;
+  border-radius: 10px;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+</style>
+
+
+<a href="{% url 'export_requests_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-export">
+  <i class="fas fa-file-excel"></i> ייצוא סך הבקשות לאקסל
+</a>
+
+<a href="{% url 'export_dashboard_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-export" style="margin-right: 10px;">
+  <i class="fas fa-file-excel"></i> ייצוא סטטיסטיקות לאקסל
+</a>
+
+
+{% if user.role > 0 %}
+<div class="container-box">
+  <h2 class="section-title">נתוני מערכת</h2>
+  
+  
+{% if user.role == 2 %}
+<!-- הוסף את הדיב הזה אחרי ה-stats-container הקיים ולפני ה-sla-section -->
+<div class="stats-container">
+  <!-- כרטיס סטטוס SLA -->
+  <div class="stat-card info">
+    <div class="stat-icon">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div class="stat-title">סטטוס SLA</div>
+    <div class="stat-value">{{ stats.overdue_count|default:"0" }}</div>
+    <small class="text-muted d-block mt-2">
+      {{ stats.at_risk_count|default:"0" }} בקשות בסיכון
+    </small>
+  </div>
+
+  <!-- כרטיס סטודנטים -->
+  <div class="stat-card primary">
+    <div class="stat-icon">
+      <i class="fas fa-user-graduate"></i>
+    </div>
+    <div class="stat-title">סטודנטים</div>
+    <div class="stat-value">{{ stats.student_count|default:"0" }}</div>
+    <small class="text-muted d-block mt-2">
+      {{ stats.course_count|default:"0" }} קורסים
+    </small>
+  </div>
+
+  <!-- כרטיס מרצים פעילים -->
+  <div class="stat-card success">
+    <div class="stat-icon">
+      <i class="fas fa-chalkboard-teacher"></i>
+    </div>
+    <div class="stat-title">מרצים פעילים</div>
+    <div class="stat-value">{{ stats.lecturer_count|default:"0" }}</div>
+    <small class="text-muted d-block mt-2">
+      {% if pending_count > 0 %}
+        {{ pending_count }} ממתינים לאישור <i class="fas fa-clock ms-1"></i>
+      {% else %}
+        ללא המתנה
+      {% endif %}
+    </small>
+  </div>
+
+  <!-- כרטיס שינוי חודשי -->
+  <div class="stat-card warning">
+    <div class="stat-icon">
+      <i class="fas fa-chart-line"></i>
+    </div>
+    <div class="stat-title">שינוי חודשי</div>
+    <div class="stat-value">{{ stats.this_month_requests|default:"0" }}</div>
+    <small class="text-muted d-block mt-2">
+      {% if stats.month_change_pct > 0 %}
+        <i class="fas fa-arrow-up ms-1"></i>{{ stats.month_change_pct }}%
+      {% elif stats.month_change_pct < 0 %}
+        <i class="fas fa-arrow-down ms-1"></i>{{ stats.month_change_pct }}%
+      {% else %}
+        <i class="fas fa-equals ms-1"></i>
+      {% endif %}
+    </small>
+  </div>
+</div>
+{% endif %}
+
+  <!-- Key Metrics Row -->
+  <div class="stats-container">
+    <!-- Total Requests Card -->
+    <div class="stat-card primary">
+      <div class="stat-icon">
+        <i class="fas fa-clipboard-list"></i>
+      </div>
+      <div class="stat-title">סה"כ בקשות</div>
+      <div class="stat-value">{{ total_requests }}</div>
+    </div>
+
+    <!-- Pending Requests Card -->
+    <div class="stat-card warning">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-title">בקשות בטיפול</div>
+      <div class="stat-value">{{ pending_requests }}</div>
+    </div>
+
+    <!-- Approved Requests Card -->
+    <div class="stat-card success">
+      <div class="stat-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-title">בקשות שאושרו</div>
+      <div class="stat-value">{{ approved_requests }}</div>
+    </div>
+
+    <!-- Rejected Requests Card -->
+    <div class="stat-card danger">
+      <div class="stat-icon">
+        <i class="fas fa-times-circle"></i>
+      </div>
+      <div class="stat-title">בקשות שנדחו</div>
+      <div class="stat-value">{{ rejected_requests }}</div>
+    </div>
+  </div>
+
+  {% if user.role > 0 %}
+  <!-- SLA Stats Section -->
+  <div class="sla-section">
+    <div class="sla-item sla-overdue">
+      <div class="stat-icon">
+        <i class="fas fa-exclamation-circle"></i>
+      </div>
+      <div class="sla-value">{{ overdue_count }}</div>
+      <div class="sla-label">חורגות מזמן</div>
+    </div>
+    
+    <div class="sla-item sla-atrisk">
+      <div class="stat-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <div class="sla-value">{{ at_risk_count }}</div>
+      <div class="sla-label">בסיכון</div>
+    </div>
+    
+    <div class="sla-item sla-ontrack">
+      <div class="stat-icon">
+        <i class="fas fa-check"></i>
+      </div>
+      <div class="sla-value">
+        {% with ontrack=pending_requests|default:0 %}
+          {% with minus_overdue=ontrack|add:"-"|add:overdue_count|default:0 %}
+            {{ minus_overdue|add:"-"|add:at_risk_count|default:0 }}
+          {% endwith %}
+        {% endwith %}
+      </div>
+      <div class="sla-label">בזמן</div>
+    </div>
+    
+    <div class="sla-item">
+      <div class="stat-icon">
+        <i class="fas fa-hourglass-half"></i>
+      </div>
+      <div class="sla-value">{{ avg_resolution_time }}</div>
+      <div class="sla-label">זמן טיפול ממוצע (שעות)</div>
+    </div>
+  </div>
+
+  <!-- Progress Bar - simplified version -->
+  <div class="progress-container">
+    {% with total=pending_requests|default:1 %}
+      {% widthratio overdue_count|default:0 total 100 as overdue_pct %}
+      {% widthratio at_risk_count|default:0 total 100 as atrisk_pct %}
+      
+      <!-- Calculate on-track percentage -->
+      {% with sum_pct=overdue_pct|add:atrisk_pct %}
+        {% with ontrack_pct=100|add:"-"|add:sum_pct %}
+          <div class="progress-bar progress-bar-danger" style="width: {{ overdue_pct }}%"></div>
+          <div class="progress-bar progress-bar-warning" style="width: {{ atrisk_pct }}%"></div>
+          <div class="progress-bar progress-bar-success" style="width: {{ ontrack_pct }}%"></div>
+        {% endwith %}
+      {% endwith %}
+    {% endwith %}
+  </div>
+  {% endif %}
+
+  <!-- Charts Row with Filter -->
+    <div class="filter-toggle" style="text-align: left; margin-bottom: 10px;">
+        <button id="toggleFilter" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-filter me-1"></i> סינון נתונים
+        </button>
+      </div>
+      
+      <div id="filterPanel" class="filter-panel" style="display: none; margin-bottom: 15px;">
+        <form method="GET" class="filter-form" id="dashboardFilter">
+          <div class="filter-row">
+            <div class="filter-col">
+              <label for="status">סטטוס</label>
+              <select name="status" id="status" class="form-control">
+                <option value="">הכל</option>
+                <option value="0" {% if request.GET.status == '0' %}selected{% endif %}>בטיפול</option>
+                <option value="1" {% if request.GET.status == '1' %}selected{% endif %}>אושר</option>
+                <option value="2" {% if request.GET.status == '2' %}selected{% endif %}>נדחה</option>
+              </select>
+            </div>
+            
+            <div class="filter-col">
+              <label for="priority">דחיפות</label>
+              <select name="priority" id="priority" class="form-control">
+                <option value="">הכל</option>
+                <option value="0" {% if request.GET.priority == '0' %}selected{% endif %}>נמוכה</option>
+                <option value="1" {% if request.GET.priority == '1' %}selected{% endif %}>בינונית</option>
+                <option value="2" {% if request.GET.priority == '2' %}selected{% endif %}>גבוהה</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="filter-row">
+            <div class="filter-col">
+              <label for="department">מחלקה</label>
+              <select name="department" id="department" class="form-control">
+                <option value="">הכל</option>
+                {% for dept in departments %}
+                  <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="filter-col">
+              <label for="sla">סטטוס SLA</label>
+              <select name="sla" id="sla" class="form-control">
+                <option value="">הכל</option>
+                <option value="overdue" {% if request.GET.sla == 'overdue' %}selected{% endif %}>חורגות מזמן</option>
+                <option value="at_risk" {% if request.GET.sla == 'at_risk' %}selected{% endif %}>בסיכון</option>
+                <option value="on_track" {% if request.GET.sla == 'on_track' %}selected{% endif %}>בזמן</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="filter-row">
+            <div class="filter-col">
+              <label for="date_from">מתאריך</label>
+              <input type="date" name="date_from" id="date_from" class="form-control" value="{{ request.GET.date_from }}">
+            </div>
+            
+            <div class="filter-col">
+              <label for="date_to">עד תאריך</label>
+              <input type="date" name="date_to" id="date_to" class="form-control" value="{{ request.GET.date_to }}">
+            </div>
+          </div>
+          
+          <div class="filter-buttons">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search me-1"></i> סנן
+            </button>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-times me-1"></i> נקה סינון
+            </a>
+          </div>
+        </form>
+      </div>
+  <div class="charts-row">
+    <!-- Status Distribution Chart with Filter -->
+    <div class="chart-container">
+     
+      
+      <h3 class="chart-title">התפלגות סטטוסים</h3>
+      <div class="canvas-container">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+
+    {% if user.role > 0 and pipeline_counts %}
+    <!-- Pipeline Status Chart -->
+    <div class="chart-container">
+      <h3 class="chart-title">התפלגות שלבים בתהליך</h3>
+      <div class="canvas-container">
+        <canvas id="pipelineChart"></canvas>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if user.role == 2 %}
+  {% if dept_counts %}
+  <!-- Department Stats -->
+  <div class="chart-container" style="max-width: 100%;">
+    <h3 class="chart-title">בקשות לפי מחלקה</h3>
+    <table class="data-table compact-table">
+      <thead>
+        <tr>
+          <th>מחלקה</th>
+          <th>מספר בקשות</th>
+          <th>אחוז</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dept_name, count in dept_counts.items %}
+        <tr>
+          <td>{{ dept_name }}</td>
+          <td>{{ count }}</td>
+          <td>
+            <div class="progress-container" style="margin: 0;">
+              <div class="progress-bar" style="width: {% widthratio count total_requests 100 %}%; background-color: #2d6cdf;"></div>
+            </div>
+            {% widthratio count total_requests 100 %}%
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- Recent Activity / Requests Row -->
+  <div class="charts-row">
+    <!-- Recent Requests - Compact version -->
+    <div class="chart-container">
+    <h3 class="chart-title">בקשות אחרונות</h3>
+
+    {% if assigned_requests %}
+        <div class="timeline compact-timeline">
+        {% for req in assigned_requests|slice:":5" %}
+            <div class="timeline-item">
+            <div class="timeline-item-content">
+                <div class="timeline-item-header">
+                <div class="timeline-item-title">
+                    <a href="{% url 'request_detail' req.id %}" class="request-link">
+                    בקשה #{{ req.id }}
+                    </a>
+                </div>
+                <div class="timeline-item-date">{{ req.created|date:"d/m/y" }}</div>
+                </div>
+
+                <div style="font-weight: bold; color: #333;">
+                {{ req.get_title_display }}
+                </div>
+
+                <div style="margin-top: 4px; font-size: 14px;">
+                ע"י {{ req.student.get_full_name }}
+                <span class="badge badge-{% if req.pipeline_status == 0 %}info{% elif req.pipeline_status == 1 %}primary{% elif req.pipeline_status == 2 %}primary{% elif req.pipeline_status == 3 %}warning{% elif req.pipeline_status == 4 %}success{% elif req.pipeline_status == 5 %}danger{% else %}secondary{% endif %}" style="margin-right: 8px;">
+                    {{ req.get_current_status_display }}
+                </span>
+                </div>
+            </div>
+            </div>
+        {% endfor %}
+
+        <div style="text-align: center; margin-top: 10px;">
+            <a href="{% url 'list_requests' %}" class="btn-action btn-primary" style="font-size: 12px;">
+                <i class="fas fa-list-alt me-1"></i> צפייה בכל הבקשות
+            </a>
+        </div>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 20px;">
+        <i class="fas fa-info-circle" style="font-size: 32px; color: #17a2b8; margin-bottom: 10px;"></i>
+        <p>אין בקשות להצגה.</p>
+        </div>
+    {% endif %}
+    </div>
+
+    {% if user.role > 0 %}
+    <div class="chart-container">
+      <h3 class="chart-title">פעילות אחרונה</h3>
+      
+      {% if recent_status_updates %}
+        <div class="timeline compact-timeline">
+          {% for status_update in recent_status_updates|slice:":5" %}
+            <div class="timeline-item">
+              <div class="timeline-item-content">
+                <div class="timeline-item-header">
+                  <div class="timeline-item-title">
+                    <a href="{% url 'request_detail' status_update.request.id %}" class="request-link">
+                      בקשה #{{ status_update.request.id }}
+                    </a>
+                  </div>
+<div class="timeline-item-date">{{ status_update.timestamp|date:"d/m/y" }}</div>
+                </div>
+                
+                <div>
+                  <span class="badge badge-{% if status_update.status == 0 %}info{% elif status_update.status == 1 %}primary{% elif status_update.status == 2 %}primary{% elif status_update.status == 3 %}warning{% elif status_update.status == 4 %}success{% elif status_update.status == 5 %}danger{% else %}secondary{% endif %}">
+                    {{ status_update.get_status_display }}
+                  </span>
+                  {% if status_update.updated_by %}
+                  <small class="text-muted">ע"י {{ status_update.updated_by.get_full_name }}</small>
+                  {% endif %}
+                </div>
+                
+                {% if status_update.notes %}
+                <div style="margin-top: 5px; font-size: 13px; color: #666; background-color: #f8f9fa; padding: 5px; border-radius: 4px;">
+                  {{ status_update.notes|truncatechars:60 }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+          
+          {% if recent_status_updates|length > 5 %}
+          <div style="text-align: center; margin-top: 10px;">
+            <a href="{% url 'list_requests' %}" class="btn-action btn-primary" style="font-size: 12px;">
+              <i class="fas fa-history me-1"></i> צפייה בכל הפעילויות
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 20px;">
+          <i class="fas fa-history" style="font-size: 32px; color: #6c757d; margin-bottom: 10px;"></i>
+          <p>אין פעילות אחרונה להצגה.</p>
+        </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Chart.js script - קוד תרשימים משופר -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // מאזין לכפתור הפתיחה/סגירה של פאנל הסינון
+    const toggleButton = document.getElementById('toggleFilter');
+    const filterPanel = document.getElementById('filterPanel');
+    
+    // בדוק אם יש פרמטרים של סינון ב-URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString() && (urlParams.get('status') !== null || 
+        urlParams.get('priority') !== null || 
+        urlParams.get('department') !== null || 
+        urlParams.get('date_from') !== null || 
+        urlParams.get('date_to') !== null || 
+        urlParams.get('sla') !== null)) {
+      // אם יש פרמטרים, פתח את הפאנל
+      filterPanel.style.display = 'block';
+      toggleButton.innerHTML = '<i class="fas fa-times me-1"></i> הסתר סינון';
+    }
+    
+    // הוסף אירוע לחיצה לכפתור הפתיחה/סגירה
+    toggleButton.addEventListener('click', function() {
+      if (filterPanel.style.display === 'none') {
+        filterPanel.style.display = 'block';
+        toggleButton.innerHTML = '<i class="fas fa-times me-1"></i> הסתר סינון';
+      } else {
+        filterPanel.style.display = 'none';
+        toggleButton.innerHTML = '<i class="fas fa-filter me-1"></i> סינון נתונים';
+      }
+    });
+
+    // הגדרות עבור התרשימים
+    var statusLabels = ['בטיפול', 'אושרו', 'נדחו'];
+    var statusColors = ['#dcd767', '#39a653', '#e6959c'];
+    var statusData = {{ status_counts|safe }};
+    
+    // תרשים התפלגות סטטוסים
+    var statusCtx = document.getElementById('statusChart');
+    if (statusCtx) {
+      var statusChart = new Chart(statusCtx.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: statusLabels,
+          datasets: [{
+            data: statusData,
+            backgroundColor: statusColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.5,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 10,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return `${label}: ${value} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    {% if user.role > 0 and pipeline_counts %}
+    // תרשים התפלגות שלבים בתהליך
+    var pipelineCtx = document.getElementById('pipelineChart');
+    if (pipelineCtx) {
+      var pipelineLabels = [];
+      var pipelineData = [];
+      
+      {% for item in pipeline_counts %}
+        pipelineLabels.push('{{ item.status }}');
+        pipelineData.push({{ item.count }});
+      {% endfor %}
+      
+      var pipelineColors = ['#17a2b8', '#2d6cdf', '#6610f2', '#dcd767', '#39a653', '#e6959c', '#909daa'];
+      
+      var pipelineChart = new Chart(pipelineCtx.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: pipelineLabels,
+          datasets: [{
+            label: 'מספר בקשות',
+            data: pipelineData,
+            backgroundColor: pipelineColors,
+            maxBarThickness: 50
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.5,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0
+              }
+            },
+            x: {
+              ticks: {
+                font: {
+                  size: 10
+                },
+                maxRotation: 45,
+                minRotation: 45
+              }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+  });
+</script>
+{% else %}
+<div class="container-box">
+  <div style="text-align: center; padding: 40px;">
+    <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: #e6959c; margin-bottom: 20px;"></i>
+    <h3 style="color: #e6959c; margin-bottom: 20px;">אין לך הרשאה לצפות בדף זה</h3>
+    <p>אנא התחבר עם משתמש בעל הרשאות מתאימות.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

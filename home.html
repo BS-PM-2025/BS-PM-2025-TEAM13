@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+{% load static %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+{% block title %}בית | EasyReq{% endblock %}
+
+{% block content %}
+  <style>
+    body {
+      background-color: #eaf0fb;
+      font-family: 'Calibri', sans-serif;
+      direction: rtl;
+      margin: 0;
+      padding: 0;
+    }
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5rem 2rem;
+  max-width: 1200px;
+  margin: auto;
+  flex-wrap: nowrap;
+}
+.hero-icon-wrapper {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.hero-icon {
+  font-size: 48px;
+  color: #4c70f0;
+  margin-bottom: 0.5rem;
+}
+
+
+.hero-content {
+  flex: 1;
+  max-width: 600px;
+  text-align: right;
+  padding: 0 0.5rem;
+}
+
+.hero-image {
+  flex: 1;
+  max-width: 600px;
+  padding: 0 0.5rem;
+  text-align: center;
+}
+
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #4c70f0;
+  text-align: center;
+  margin-bottom: -1rem;
+  position: relative;
+}
+
+
+    .hero-subtitle {
+      font-size: 1.3rem;
+      color: #555;
+      margin-bottom: 1.5rem;
+      line-height: 1.8;
+    }
+
+   .hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+
+    .btn-primary,
+    .btn-secondary {
+      padding: 0.75rem 1.8rem;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 2rem;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.3s;
+    }
+
+    .btn-primary {
+      background-color: #4c70f0;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #3454d1;
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      border: 2px solid #4c70f0;
+      color: #4c70f0;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e6ebff;
+    }
+
+
+.hero-image img {
+  width:1200px;
+  height: auto;
+}
+
+
+    @media (max-width: 768px) {
+      .hero {
+        flex-direction: column-reverse;
+        text-align: center;
+        padding: 3rem 1rem;
+      }
+
+      .hero-content {
+        text-align: center;
+      }
+
+      .hero-buttons {
+        justify-content: center;
+      }
+    }
+    .title-easy {
+  color: #2b3d8f;
+}
+
+.title-req {
+  color: #4c70f0;
+}
+
+    .container-box {
+      max-width: 560px;
+      margin: 60px auto;
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 12px 40px rgba(46, 70, 122, 0.3);
+      text-align: center;
+    }
+    .home-icon {
+      font-size: 58px;
+      color: #5a75f8;
+      margin-bottom: 10px;
+    }
+    .home-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 20px;
+    }
+    .welcome-text {
+      font-size: 20px;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 30px;
+    }
+    .btn-home {
+      width: 100%;
+      padding: 14px 5px;
+      border: none;
+      background-color: #5a75f8;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      border-radius: 8px;
+      transition: background 0.3s;
+      margin-bottom: 12px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-home:hover {
+      background-color: #4158d0;
+    }
+    .hero-subtitle-title {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #2b3d8f;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.with-icon {
+  position: relative;
+  display: inline-block;
+  text-align: center;
+  width: 100%;
+}
+
+.hero-title-icon {
+  position: absolute;
+  top: 0;
+  left: 32%;
+  transform: translateX(-60%) translateY(-100%) rotate(-20deg);
+  font-size: 40px;
+  color: #4c70f0;
+  margin: 20px;
+  padding: 0;
+  line-height: 1;
+}
+
+
+
+
+
+  </style>
+
+  {% if user.is_authenticated %}
+    <div class="container-box">
+      <i class='bx bxs-home home-icon'></i>
+      <div class="home-title">EasyReq</div>
+
+      <div class="welcome-text">
+        שלום, {{ user.get_full_name }}!
+      </div>
+
+      {% if user.role == 0 %}
+        <a href="{% url 'create_request' %}" class="btn-home">+ הגשת בקשה חדשה</a>
+        <a href="{% url 'list_requests' %}" class="btn-home">📄 הבקשות שלי</a>
+      {% elif user.role == 1 %}
+        <a href="{% url 'list_requests' %}?assigned=1" class="btn-home">📥 בקשות שהוקצו לי</a>
+        <a href="{% url 'dashboard' %}" class="btn-home">📊 דשבורד מרצה</a>
+      {% elif user.role == 2 %}
+        <a href="{% url 'dashboard' %}" class="btn-home">📊 דשבורד מחלקתי</a>
+        <a href="{% url 'manage_users' %}" class="btn-home">👥 ניהול משתמשים</a>
+        <a href="{% url 'manage_courses' %}" class="btn-home">📚 ניהול קורסים</a>
+      {% elif user.role == 3 %}
+        <a href="{% url 'dashboard' %}" class="btn-home">📊 דשבורד כללי</a>
+        <a href="{% url 'list_requests' %}" class="btn-home">📄 צפייה בכל הבקשות</a>
+      {% endif %}
+
+      <a href="{% url 'profile' %}" class="btn-home">👤 לפרופיל שלי</a>
+      <a href="{% url 'logout' %}" class="btn-home">🚪 התנתק</a>
+    </div>
+
+  {% else %}
+<section class="hero">
+<div class="hero-content">
+<h1 class="hero-title with-icon">
+  <i class="fas fa-graduation-cap hero-title-icon"></i>
+  <span class="title-easy">Easy</span><span class="title-req">Req</span>
+</h1>
+
+
+  <h2 class="hero-subtitle-title">מערכת לניהול בקשות סטודנט</h2>
+
+    <p class="hero-subtitle" style="color: #000;">
+      ברוכים הבאים ל-EasyReq, המערכת הרשמית של מכללת SCE לניהול בקשות אקדמיות עבור סטודנטים, מרצים וצוותי מזכירות.
+      המערכת פותחה כדי לייעל את תהליך הגשת הבקשות, לחסוך בזמן ולשפר את חוויית השירות האקדמי.
+    </p>
+
+    <!-- רשימת יכולות עם עיגולים כחולים מעוצבים -->
+    <div style="margin-top: 2.5rem;">
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          הגשת סוגי בקשות אקדמיות ישירות דרך המערכת: שינוי מערכת שעות, בקשות למועדים מיוחדים, מילואים ועוד.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          מעקב אחר סטטוס הבקשה – בכל שלב: נשלחה, בטיפול, אושרה או נדחתה – כולל עדכונים שוטפים.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          טיפול מקצועי של מזכירות המחלקה דרך ממשק ניהולי חכם – כולל סינון, תגובות מהירות ודוחות.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          מרצים יכולים לצפות בבקשות רלוונטיות ולהגיב ישירות דרך המערכת.
+        </p>
+      </div>
+
+
+    </div>
+
+    <div class="hero-buttons" style="margin-top: 3rem;">
+      <a href="{% url 'login' %}" class="btn-primary">התחברות</a>
+      <a href="{% url 'register' %}" class="btn-secondary">הרשמה</a>
+    </div>
+  </div>
+
+
+  <div class="hero-image">
+    <img src="{% static 'images/homePage.png' %}" alt="איור מערכת EasyReq">
+  </div>
+</section>
+  {% endif %}
+{% endblock %}

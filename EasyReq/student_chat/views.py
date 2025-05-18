@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 import json
 from openai import OpenAI
+from django.conf import settings
 
 
 def chat_view(request):
@@ -16,7 +17,6 @@ def get_response(request):
             user_message = data.get('message', '')
             print(f"הודעת המשתמש: {user_message}")
 
-            # קבלת תשובה מ-ChatGPT
             bot_response = get_openai_response(user_message)
             print(f"תשובת הבוט (התחלה): {bot_response[:50]}...")
 
@@ -32,16 +32,13 @@ def get_response(request):
 
 
 def get_openai_response(message):
-    """
-    מקבל תשובה ממודל שפה של OpenAI
-    """
     try:
         print("מתחבר ל-OpenAI API...")
-        # יצירת קליינט OpenAI
-        client = OpenAI(
-            api_key="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")
 
-        # בניית הפרומפט והקשר עם הגבלות נוקשות
+        client = OpenAI(
+            api_key=settings.OPENAI_API_KEY)
+
+
         system_prompt = """
         אתה עוזר וירטואלי באתר בקשות סטודנטים, שמטרתו היחידה היא לספק מידע ועזרה בנושאים הקשורים לבקשות סטודנטים בלבד.
 
@@ -91,7 +88,6 @@ def get_openai_response(message):
         )
 
         print("התקבלה תשובה מ-OpenAI API")
-        # החזרת התשובה
         return response.choices[0].message.content
     except Exception as e:
         print(f"שגיאה בחיבור ל-OpenAI: {str(e)}")

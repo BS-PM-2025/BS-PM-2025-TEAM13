@@ -20,13 +20,9 @@ def random_email():
     random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
     return f"test_{random_str}@example.com"
 
-
-class RequestLifecycleIntegrationTests(TestCase):
-    """בדיקות אינטגרציה לתהליך חיים שלם של בקשה"""
-    
+class RequestLifecycleIntegrationTests(TestCase):    
     def setUp(self):
         self.client = Client()
-        
         self.department = Department.objects.create(name='מחלקת בדיקות')
         
         self.course = Course.objects.create(
@@ -71,13 +67,6 @@ class RequestLifecycleIntegrationTests(TestCase):
         )
     
     def test_complete_request_lifecycle(self):
-        """
-        בדיקת תהליך שלם של בקשה:
-        1. יצירת בקשה ישירות
-        2. בדיקת עדכון סטטוס
-        3. הוספת תגובה ישירות
-        4. אישור סופי
-        """
         request = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -131,9 +120,7 @@ class RequestLifecycleIntegrationTests(TestCase):
         self.assertEqual(request.status, 1)  
 
 
-class SimpleStudentRequestsTests(TestCase):
-    """בדיקות פשוטות ליצירת וצפייה בבקשות"""
-    
+class SimpleStudentRequestsTests(TestCase):    
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='מחלקת סטודנט')
@@ -152,7 +139,6 @@ class SimpleStudentRequestsTests(TestCase):
         self.student.courses.add(self.course)
     
     def test_create_request(self):
-        """בדיקה שסטודנט יכול ליצור בקשה"""
         login_successful = self.client.login(username='simple_student', password='password123')
         self.assertTrue(login_successful)
         
@@ -171,7 +157,6 @@ class SimpleStudentRequestsTests(TestCase):
         self.assertEqual(request.course, self.course)
     
     def test_view_request_list(self):
-        """בדיקה שסטודנט יכול לצפות ברשימת הבקשות שלו"""
         request = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -191,7 +176,6 @@ class SimpleStudentRequestsTests(TestCase):
 
 
 class StaffOperationsTests(TestCase):
-    """בדיקות פעולות צוות מזכירות"""
     
     def setUp(self):
         self.client = Client()
@@ -244,7 +228,6 @@ class StaffOperationsTests(TestCase):
         self.course = Course.objects.create(name='קורס מזכירות', year=1, dept=self.department)
     
     def test_manage_courses(self):
-        """בדיקה שמזכירות יכולה לצפות בדף ניהול הקורסים"""
         login_successful = self.client.login(username='staff_operations', password='password123')
         self.assertTrue(login_successful)
         
@@ -252,7 +235,6 @@ class StaffOperationsTests(TestCase):
         self.assertEqual(response.status_code, 200)
     
     def test_add_course(self):
-        """בדיקה שמזכירות יכולה להוסיף קורס חדש"""
         login_successful = self.client.login(username='staff_operations', password='password123')
         self.assertTrue(login_successful)
         
@@ -266,7 +248,6 @@ class StaffOperationsTests(TestCase):
         self.assertTrue(Course.objects.filter(name='קורס חדש למזכירות').exists())
     
     def test_approve_student_request(self):
-        """בדיקה שמזכירות יכולה לאשר בקשה של סטודנט"""
         request = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -293,13 +274,11 @@ class StaffOperationsTests(TestCase):
         self.assertEqual(request.status, 1) 
 
     def test_student_cannot_access_manage_courses(self):
-        """בדיקה שסטודנט לא יכול לגשת לדף ניהול הקורסים"""
         self.client.login(username='student_for_staff', password='password123')
         response = self.client.get(reverse('manage_courses'))
         self.assertIn(response.status_code, [302, 403]) 
 
     def test_student_cannot_approve_request(self):
-        """בדיקה שסטודנט לא יכול לאשר בקשה"""
         request_obj = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -324,7 +303,6 @@ class StaffOperationsTests(TestCase):
         self.assertNotEqual(request_obj.status, 1)
 
     def test_create_request_with_attachment(self):
-        """בדיקה שסטודנט יכול ליצור בקשה עם קובץ מצורף"""
         login_successful = self.client.login(username='student_for_staff', password='password123')
         self.assertTrue(login_successful)
 
@@ -345,7 +323,6 @@ class StaffOperationsTests(TestCase):
         self.assertTrue(req.attachments)
 
     def test_view_notifications(self):
-        """בדיקה שצוות יכול לצפות בהתראות שלו"""
         Notification.objects.create(user=self.staff, message='התראה חדשה')
         self.client.login(username='staff_operations', password='password123')
         response = self.client.get(reverse('all_notifications'))
@@ -353,13 +330,11 @@ class StaffOperationsTests(TestCase):
         self.assertContains(response, 'התראה חדשה')
 
     def test_profile_edit_access(self):
-        """בדיקה שסטודנט יכול לגשת לעריכת פרופיל"""
         self.client.login(username='student_for_staff', password='password123')
         response = self.client.get(reverse('profile'))
         self.assertEqual(response.status_code, 200)
 
     def test_profile_picture_upload(self):
-        """בדיקה שסטודנט יכול לעדכן תמונת פרופיל"""
         self.client.login(username='student_for_staff', password='password123')
         image = SimpleUploadedFile("avatar.jpg", b"testcontent", content_type="image/jpeg")
         response = self.client.post(reverse('profile'), {
@@ -370,7 +345,6 @@ class StaffOperationsTests(TestCase):
         self.assertTrue(self.student.profile_pic.name.startswith('profile_pics/'))
 
     def test_request_filter_by_status(self):
-        """בדיקה של סינון בקשות לפי סטטוס"""
         Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -385,7 +359,6 @@ class StaffOperationsTests(TestCase):
         self.assertContains(response, 'מאושר') 
 
     def test_request_filter_by_priority(self):
-        """בדיקה של סינון לפי עדיפות"""
         Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -401,7 +374,6 @@ class StaffOperationsTests(TestCase):
 
 
     def test_request_filter_by_date_range(self):
-        """בדיקה של סינון בקשות לפי טווח תאריכים"""
         old_request = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -420,7 +392,6 @@ class StaffOperationsTests(TestCase):
         self.assertNotContains(response, 'בקשה ישנה')
 
     def test_student_cannot_view_others_requests(self):
-        """בדיקה שסטודנט לא יכול לצפות בבקשות של סטודנט אחר"""
         other_student = User.objects.create_user(
             username='other_student',
             password='password123',
@@ -443,7 +414,6 @@ class StaffOperationsTests(TestCase):
         self.assertIn(response.status_code, [302, 403])
 
     def test_notification_toggle_status(self):
-        """בדיקה של החלפת סטטוס התראה"""
         notif = Notification.objects.create(user=self.staff, message='בדיקת סטטוס')
         self.client.login(username='staff_operations', password='password123')
         response = self.client.post(
@@ -457,7 +427,6 @@ class StaffOperationsTests(TestCase):
 
 
     def test_add_course_missing_name(self):
-        """בדיקה שניסיון להוסיף קורס ללא שם נכשל"""
         self.client.login(username='staff_operations', password='password123')
 
         response = self.client.post(reverse('add_course'), {
@@ -472,13 +441,11 @@ class StaffOperationsTests(TestCase):
         self.assertTrue(found_error)
 
     def test_dashboard_access(self):
-        """בדיקה שסטודנט יכול לגשת לדשבורד"""
         self.client.login(username='student_for_staff', password='password123')
         response = self.client.get(reverse('dashboard'))
         self.assertEqual(response.status_code, 200)
 
     def test_request_detail_page(self):
-        """בדיקה שעמוד פרטי בקשה נפתח תקין"""
         request = Request.objects.create(
             student=self.student,
             dept=self.department,

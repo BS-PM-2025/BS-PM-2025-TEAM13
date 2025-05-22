@@ -32,8 +32,6 @@
     text-align: center;
   }
 
-  
-
   .table-responsive {
     overflow-x: auto;
   }
@@ -162,7 +160,6 @@
   color: #d33;
 }
 
-
 .label {
   font-size: 13px;
   padding: 5px 10px;
@@ -240,25 +237,173 @@
   opacity: 0.7;
 }
 
+.new-request-btn {
+  background-color: #2d6cdf;
+  color: #fff;
+  font-size: 18px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(45, 108, 223, 0.3);
+  transition: background-color 0.3s, transform 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
 
+.new-request-btn:hover {
+  background-color: #1a56c5;
+  transform: translateY(-2px);
+  color: #fff;
+  text-decoration: none;
+}
+
+.chart-container {
+    max-width: 500px;
+    margin-top:10px;
+    margin: 10px auto; 
+    text-align: center;
+    padding-right: 10px;
+}
+
+.chart-container div {
+    position: relative;
+    height: 350px !important; 
+    width: 350px !important; 
+    margin: 0 auto;
+}
+
+.section-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2d6cdf;
+    margin-bottom: 20px !important; 
+    text-align: center;
+}
+
+.no-data-chart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    padding: 40px 20px;
+    text-align: center;
+    border: 2px dashed #dee2e6;
+}
+
+.no-data-chart + div {
+    color: #6c757d !important;
+    font-weight: 600 !important;
+    font-size: 18px !important;
+    margin-top: 10px !important;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+  background-color: #f8f9fa !important;
+}
+
+.clickable-row:hover td {
+  background-color: #f8f9fa !important;
+}
+
+/* סטייל חדש עבור מחיקה קבוצתית */
+.bulk-actions {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #dee2e6;
+  display: none;
+}
+
+.bulk-actions.show {
+  display: block;
+}
+
+.bulk-delete-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.bulk-delete-btn:hover {
+  background-color: #c82333;
+}
+
+.bulk-delete-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.select-all-container {
+  margin-bottom: 10px;
+}
+
+
+input[type="checkbox"] {
+  cursor: pointer;
+  transform: scale(1.2);
+}
+
+.selected-count {
+  font-weight: bold;
+  color: #2d6cdf;
+}
+
+.checkbox-cell {
+  width: 40px;
+  text-align: center;
+  display: none; /* מוסתר כברירת מחדל */
+}
+
+.checkbox-cell.show {
+  display: table-cell; /* מופיע במצב בחירה */
+}
+
+.selection-mode-active .clickable-row {
+  cursor: default;
+}
+
+.selection-mode-active .clickable-row td:not(.checkbox-cell) {
+  pointer-events: none;
+}
+
+#toggleSelectionMode {
+  transition: all 0.3s ease;
+}
+
+#toggleSelectionMode.active {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
 </style>
 
 <div class="container-box">
   <h2 class="section-title">ניהול בקשות</h2>
 
-
   {% if user.role == 0 or user.role == 1 %}
-  <div class="mb-4 text-end">
-    <a href="{% url 'create_request' %}" class="btn btn-primary btn-sm">
+  <div style="text-align: center; margin-top: 0;">
+      <a href="{% url 'create_request' %}" class="btn new-request-btn">
       <i class="fas fa-plus me-1"></i> בקשה חדשה
     </a>
   </div>
 
-   <div class="chart-container" style="max-width: 300px; margin: 0 auto 20px;">
-  <div 
-    style="position: relative; height: 300px; width: 200px; margin: 0 auto;" 
-    class="{% if status_counts.0 == 0 and status_counts.1 == 0 and status_counts.2 == 0 %}no-data-chart{% endif %}"
-  >
+  <div class="chart-container">
+  <div class="{% if status_counts.0 == 0 and status_counts.1 == 0 and status_counts.2 == 0 %}no-data-chart{% endif %}">
     <canvas id="statusChart"></canvas>
   </div>
 
@@ -269,15 +414,15 @@
   {% endif %}
 </div>
 
-
   {% endif %}
+
 
   <div class="filter-bar mb-4">
     <input type="text" id="searchTitle" placeholder="חיפוש לפי כותרת..." class="form-control d-inline-block w-auto me-2 mb-2" />
 
     <select id="statusFilter" class="form-select d-inline-block w-auto me-2 mb-2">
       <option value="">כל הסטטוסים</option>
-      <option value="ממתין">ממתין לטיפול</option>
+      <option value="ממתין" selected>ממתין לטיפול</option>
       <option value="מאושר">מאושר</option>
       <option value="נדחה">נדחה</option>
     </select>
@@ -290,31 +435,64 @@
     </select>
   </div>
 
-  {% if user.role != 0 %}
-    <form method="post" action="{% url 'list_requests' %}">
-      {% csrf_token %}
+
+   {% if user.role == 1 or user.role == 2 or user.role == 3 %}
+          <button type="button" class="btn btn-outline-primary btn-sm" id="toggleSelectionMode" onclick="toggleSelectionMode()">
+            <i class="fas fa-check-square me-1"></i> בחר בקשות 
+          </button>
+    {% endif %}
+{% if user.role != 0 %}
+        <form method="post" action="{% url 'bulk_delete_requests' %}" id="requestsForm">
+        {% csrf_token %}
+      
+      <!-- אזור פעולות קבוצתיות -->
+
+       
+      {% if user.role == 1 or user.role == 2 or user.role == 3 %}
+      <div class="bulk-actions" id="bulkActions">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <span>נבחרו: <span class="selected-count" id="selectedCount">0</span> בקשות</span>
+          <button type="button" class="bulk-delete-btn" id="bulkDeleteBtn" onclick="bulkDelete()">
+            <i class="fas fa-trash me-1"></i> מחק נבחרים
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="table-responsive">
         <table id="sortable-table">
           <thead>
-            <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
-              <th>מס'</th>
+          <tr>
+                {% if user.role == 1 or user.role == 2 or user.role == 3 %}
+                <th class="checkbox-cell">
+                  <input type="checkbox" id="selectAll" onchange="toggleAllSelection()">
+                </th>
+                {% endif %}
+                <th>מס'</th>
               <th>שם הסטודנט</th>
               <th>כותרת</th>
               <th>סטטוס</th>
               <th>דחיפות</th>
               <th>זמן לטיפול</th>
-              <th>פעולות</th>
             </tr>
           </thead>
           <tbody>
           {% for req in page_obj %}
-          <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
-            <td>{{ req.id }}</td>
-            <td>{{ req.student.get_full_name }}</td>
-            <td>{{ req.get_title_display|truncatechars:30 }}</td>
+          <tr class="clickable-row" 
+              {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+            
+            {% if user.role == 1 or user.role == 2 or user.role == 3 %}
+            <td class="checkbox-cell" onclick="event.stopPropagation();">
+              <input type="checkbox" name="selected_requests" value="{{ req.id }}" class="request-checkbox" onchange="updateBulkActions()">
+            </td>
+            {% endif %}
+            
+            <td onclick="window.location.href='{% url 'request_detail' req.id %}'">{{ req.id }}</td>
+            <td onclick="window.location.href='{% url 'request_detail' req.id %}'">{{ req.student.get_full_name }}</td>
+            <td onclick="window.location.href='{% url 'request_detail' req.id %}'">{{ req.get_title_display|truncatechars:30 }}</td>
 
             <!-- סטטוס -->
-            <td>
+            <td onclick="window.location.href='{% url 'request_detail' req.id %}'">
               {% if req.status == 0 %}
                 <i class="fas fa-hourglass-half text-muted"></i> ממתין
               {% elif req.status == 1 %}
@@ -325,7 +503,7 @@
             </td>
 
             <!-- דחיפות -->
-            <td>
+            <td onclick="window.location.href='{% url 'request_detail' req.id %}'">
               {% if req.priority == 3 %}
                 גבוהה
               {% elif req.priority == 2 %}
@@ -336,32 +514,20 @@
             </td>
 
             <!-- זמן לטיפול -->
-            <td>
-              {% if req.status == 0 %}
+            <td onclick="window.location.href='{% url 'request_detail' req.id %}'">
+            {% if req.status == 0 %}
+              {% if "באיחור" in req.get_remaining_days_display %}
                 {{ req.get_remaining_days_display|safe }}
               {% else %}
-                טופל
+                {{ req.get_remaining_days_display|safe }}
               {% endif %}
-            </td>
-
-            <!-- פעולות -->
-            <td>
-              <a href="{% url 'request_detail' req.id %}" class="btn btn-link text-decoration-none" title="צפה">
-                <i class="fas fa-eye text-primary"></i>
-              </a>
-              {% if user.role == 1 or user.role == 2 or user.role == 3 %}
-              <a href="{% url 'update_request_status' req.id %}" class="btn btn-link text-decoration-none" title="עדכון">
-                <i class="fas fa-pen text-warning"></i>
-              </a>
-              <button type="submit" name="delete_request_id" value="{{ req.id }}" class="btn btn-link text-decoration-none" onclick="return confirm('האם למחוק את הבקשה?');" title="מחק">
-                <i class="fas fa-trash text-danger"></i>
-              </button>
-              {% endif %}
-            </td>
+            {% else %}
+              טופל
+            {% endif %}
+          </td>
           </tr>
           {% endfor %}
         </tbody>
-          </tbody>
         </table>
       </div>
     </form>
@@ -372,18 +538,19 @@
       <div class="table-responsive">
         <table id="sortable-table">
           <thead>
-            <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+            <tr>
               <th>מס'</th>
               <th>שם הסטודנט</th>
               <th>כותרת</th>
               <th>סטטוס</th>
               <th>זמן לטיפול</th>
-              <th>פעולות</th>
             </tr>
           </thead>
           <tbody>
           {% for req in page_obj %}
-          <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+          <tr class="clickable-row" onclick="window.location.href='{% url 'request_detail' req.id %}'"
+              {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+            
             <td>{{ req.id }}</td>
             <td>{{ req.student.get_full_name }}</td>
             <td>{{ req.get_title_display|truncatechars:30 }}</td>
@@ -407,25 +574,9 @@
                 טופל
               {% endif %}
             </td>
-
-            <!-- פעולות -->
-            <td>
-              <a href="{% url 'request_detail' req.id %}" class="btn btn-link text-decoration-none" title="צפה">
-                <i class="fas fa-eye text-primary"></i>
-              </a>
-              {% if user.role == 1 or user.role == 2 or user.role == 3 %}
-              <a href="{% url 'update_request_status' req.id %}" class="btn btn-link text-decoration-none" title="עדכון">
-                <i class="fas fa-pen text-warning"></i>
-              </a>
-              <button type="submit" name="delete_request_id" value="{{ req.id }}" class="btn btn-link text-decoration-none" onclick="return confirm('האם למחוק את הבקשה?');" title="מחק">
-                <i class="fas fa-trash text-danger"></i>
-              </button>
-              {% endif %}
-            </td>
           </tr>
           {% endfor %}
         </tbody>
-          </tbody>
         </table>
       </div>
     </form>
@@ -433,38 +584,130 @@
 </div>
 
 <script>
+  let selectionMode = false;
   document.addEventListener('DOMContentLoaded', function () {
     const table = document.getElementById('sortable-table');
     if (table) new Tablesort(table);
   });
 
+  // פונקציות המחיקה הקבוצתית
+  function toggleAllSelection() {
+    if (!selectionMode) return;  
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.request-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = selectAll.checked;
+    });
+    
+    updateBulkActions();
+  }
+
+  function updateBulkActions() {
+  if (!selectionMode) return;
+
+  const checkboxes = document.querySelectorAll('.request-checkbox');
+  const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+  const bulkActions = document.getElementById('bulkActions');
+  const selectedCount = document.getElementById('selectedCount');
+  const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+  const selectAll = document.getElementById('selectAll');
+  const toggleBtn = document.getElementById('toggleSelectionMode'); // ✅ חדש
+
+  if (checkedBoxes.length > 0) {
+    bulkActions.classList.add('show');
+    selectedCount.textContent = checkedBoxes.length;
+    bulkDeleteBtn.disabled = false;
+    toggleBtn.innerHTML = '<i class="fas fa-times me-1"></i> בטל בחירה'; // ✅ שינוי כפתור
+  } else {
+    bulkActions.classList.remove('show');
+    bulkDeleteBtn.disabled = true;
+    toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר בקשות'; // ✅ חזרה לברירת מחדל
+  }
+
+  selectAll.checked = checkedBoxes.length === checkboxes.length && checkboxes.length > 0;
+  selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+}
+
+
+  function clearSelection() {
+  const checkboxes = document.querySelectorAll('.request-checkbox');
+  const selectAll = document.getElementById('selectAll');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+
+  if (selectAll) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  }
+
+  updateBulkActions();
+}
+
+
+  function bulkDelete() {
+    const checkedBoxes = document.querySelectorAll('.request-checkbox:checked');
+    
+    if (checkedBoxes.length === 0) {
+      alert('אנא בחר לפחות בקשה אחת למחיקה');
+      return;
+    }
+    
+    const confirmMessage = `האם אתה בטוח שברצונך למחוק ${checkedBoxes.length} בקשות?`;
+    
+    if (confirm(confirmMessage)) {
+      // יצירת hidden input לכל בקשה נבחרת
+      const form = document.getElementById('requestsForm');
+      
+      // הוספת input נסתר לסימון שזו מחיקה קבוצתית
+      const bulkDeleteInput = document.createElement('input');
+      bulkDeleteInput.type = 'hidden';
+      bulkDeleteInput.name = 'bulk_delete';
+      bulkDeleteInput.value = 'true';
+      form.appendChild(bulkDeleteInput);
+      
+      // שליחת הטופס
+      form.submit();
+    }
+  }
+
+  // פונקצית הפילטר המעודכנת
   document.addEventListener("DOMContentLoaded", function () {
     const titleInput = document.getElementById("searchTitle");
     const statusFilter = document.getElementById("statusFilter");
     const priorityFilter = document.getElementById("priorityFilter");
 
-    function filterTable() {
-      const title = titleInput.value.toLowerCase();
-      const status = statusFilter.value;
-      const priority = priorityFilter.value;
-      const rows = document.querySelectorAll("#sortable-table tbody tr");
+      function filterTable() {
+    const title = titleInput.value.toLowerCase();
+    const status = statusFilter.value;
+    const priority = priorityFilter.value;
+    const rows = document.querySelectorAll("#sortable-table tbody tr");
 
-      rows.forEach((row) => {
-        const titleText = row.children[2].textContent.toLowerCase();
-        const statusText = row.children[3].textContent.trim();
-        const priorityText = row.children[4].textContent.trim();
+    rows.forEach((row) => {
+      const hasCheckbox = row.querySelector('.request-checkbox');
+      const titleIndex = hasCheckbox ? 3 : 2;
+      const statusIndex = hasCheckbox ? 4 : 3;
+      const priorityIndex = hasCheckbox ? 5 : 4;
 
-        const matchTitle = titleText.includes(title);
-        const matchStatus = !status || statusText === status;
-        const matchPriority = !priority || priorityText === priority;
+      const titleText = row.children[titleIndex].textContent.toLowerCase();
+      const statusText = row.children[statusIndex].textContent.trim();
+      const priorityText = priorityIndex < row.children.length ? row.children[priorityIndex].textContent.trim() : '';
 
-        row.style.display = matchTitle && matchStatus && matchPriority ? "" : "none";
-      });
-    }
+      const matchTitle = titleText.includes(title);
+      const matchStatus = !status || statusText === status;
+      const matchPriority = !priority || priorityText === priority;
+
+      row.style.display = matchTitle && matchStatus && matchPriority ? "" : "none";
+    });
+  }
 
     titleInput.addEventListener("input", filterTable);
     statusFilter.addEventListener("change", filterTable);
     priorityFilter.addEventListener("change", filterTable);
+
+    filterTable();
   });
 
 const ctx = document.getElementById('statusChart');
@@ -480,20 +723,30 @@ if (ctx) {
 
   const chartData = hasData
     ? {
-        labels: ['ממתין', 'מאושר', 'נדחה'],
+        labels: ['ממתין לטיפול', 'מאושר', 'נדחה'],
         datasets: [{
           data: statusCounts,
-          backgroundColor: ['#dcd767', '#39a653', '#e6959c'],
-          borderColor: ['#ffffff', '#ffffff', '#ffffff'],
-          borderWidth: 2
+          backgroundColor: [
+            '#3498db',  // כחול יפה לממתין
+            '#2ecc71',  // ירוק יפה למאושר  
+            '#e74c3c'   // אדום יפה לנדחה
+          ],
+          borderColor: '#ffffff',
+          borderWidth: 4,
+          hoverBackgroundColor: [
+            '#2980b9',  // כחול כהה יותר בהובר
+            '#27ae60',  // ירוק כהה יותר בהובר
+            '#c0392b'   // אדום כהה יותר בהובר
+          ],
+          hoverBorderWidth: 5
         }]
       }
     : {
         labels: ['אין בקשות'],
         datasets: [{
           data: [1],
-          backgroundColor: ['#ffffff'],
-          borderColor: ['#000000'],
+          backgroundColor: ['#ecf0f1'],
+          borderColor: ['#bdc3c7'],
           borderWidth: 2
         }]
       };
@@ -501,14 +754,62 @@ if (ctx) {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: '50%',  
     plugins: {
       legend: {
+        rtl:true,
         display: hasData,
-        position: 'bottom'
+        position: 'right',
+        align: 'center',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          boxWidth: 15,
+          boxHeight: 15,
+          padding: 25,
+          font: {
+            size: 16,
+            weight: '600',
+            family: 'Calibri'
+          },
+          color: '#2c3e50'
+        }
       },
       tooltip: {
-        enabled: hasData
+        enabled: hasData,
+        backgroundColor: 'rgba(52, 73, 94, 0.95)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        cornerRadius: 10,
+        displayColors: true,
+        bodyFont: {
+          size: 14,
+          weight: '600'
+        },
+        titleFont: {
+          size: 16,
+          weight: 'bold'
+        },
+        callbacks: {
+          label: function(context) {
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((context.parsed * 100) / total).toFixed(1);
+            return `${context.label}: ${context.parsed} בקשות (${percentage}%)`;
+          }
+        }
       }
+    },
+    animation: {
+      animateRotate: true,
+      animateScale: true,
+      duration: 2000,
+      easing: 'easeOutCubic'
+    },
+    interaction: {
+      intersect: false,
+      mode: 'nearest'
     }
   };
 
@@ -519,6 +820,29 @@ if (ctx) {
   });
 }
 
+
+function toggleSelectionMode() {
+  const toggleBtn = document.getElementById('toggleSelectionMode');
+  const checkboxCells = document.querySelectorAll('.checkbox-cell');
+  const table = document.getElementById('sortable-table');
+  const bulkActions = document.getElementById('bulkActions');
+
+  selectionMode = !selectionMode;
+
+  if (selectionMode) {
+    checkboxCells.forEach(cell => cell.classList.add('show'));
+    table.classList.add('selection-mode-active');
+    toggleBtn.classList.add('active');
+    updateBulkActions(); // כדי להציג בטל בחירה רק אם יש משהו מסומן
+  } else {
+    clearSelection(); // מסיר סימונים
+    checkboxCells.forEach(cell => cell.classList.remove('show'));
+    table.classList.remove('selection-mode-active');
+    toggleBtn.classList.remove('active');
+    toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר בקשות';
+    if (bulkActions) bulkActions.classList.remove('show'); // מסתיר כפתור מחיקה + נבחרו
+  }
+}
 
 </script>
 {% endblock %}

@@ -1,289 +1,524 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="he">
 {% extends 'base.html' %}
 {% load static %}
-{% load request_extras %}
 
-{% block title %} Requests | EasyReq {% endblock %}
+{% block title %}ניהול בקשות | EasyReq{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>ניהול בקשות</h1>
-        {% if user.role == 0 %}
-        <a href="{% url 'create_request' %}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>בקשה חדשה
-        </a>
-        {% endif %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/tablesort@5.2.1/dist/tablesort.min.js"></script>
+
+<style>
+  body {
+    background-color: #eaf0fb;
+    font-family: 'Calibri', sans-serif;
+    direction: rtl;
+  }
+
+  .container-box {
+    max-width: 1200px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 12px 40px rgba(46, 70, 122, 0.7);
+  }
+
+  .section-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2d6cdf;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+
+  
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    direction: rtl;
+    text-align: right;
+    background-color: #fff;
+  }
+
+  thead th {
+    background-color: #f2f4f8;
+    border: 1px solid #ccc;
+    padding: 12px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  thead th::after {
+    content: " \f0dc";
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #666;
+  }
+
+  tbody td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    vertical-align: middle;
+  }
+
+  .badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: white;
+    display: inline-block;
+  }
+
+  .badge-warning { background-color: #dcd767; }
+  .badge-success { background-color: #39a653; }
+  .badge-danger { background-color: #e6959c; }
+  .badge-secondary { background-color: #909daa; }
+  .badge-info { background-color: #17a2b8; }
+  .badge-urgent { background-color: #dc3545; }
+  .badge-soon { background-color: #ffc107; color: #333; }
+  .badge-ok { background-color: #28a745; }
+
+  .btn-sm {
+    padding: 4px 10px;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+
+  .btn-outline-edit {
+    color: #fd7e14;
+    border: 1px solid #fd7e14;
+  }
+
+  .btn-outline-edit:hover {
+    background-color: #fd7e14;
+    color: white;
+  }
+
+  .btn-outline-danger {
+    color: #dc3545;
+    border: 1px solid #dc3545;
+  }
+
+  .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+  }
+
+  .mb-4 {
+    margin-bottom: 1.5rem;
+  }
+
+.filter-bar input,
+.filter-bar select {
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  background-color: #f4f4f4;
+  color: #333;
+  transition: 0.2s ease;
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  background-color: #e2e6ea;
+}
+
+.action-view {
+  background-color: #dfefff;
+  color: #1464c2;
+}
+
+.action-edit {
+  background-color: #fff7e6;
+  color: #d98300;
+}
+
+.action-delete {
+  background-color: #fdeaea;
+  color: #d33;
+}
+
+
+.label {
+  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  color: #444;
+  display: inline-block;
+}
+
+.label-waiting {
+  border-color: #ffc107;
+  background-color: #fff8e1;
+}
+
+.label-approved {
+  border-color: #28a745;
+  background-color: #e9fbe9;
+}
+
+.label-rejected {
+  border-color: #dc3545;
+  background-color: #fdecea;
+}
+
+.label-high {
+  border-color: #dc3545;
+  background-color: #fbeaea;
+}
+
+.label-medium {
+  border-color: #ffc107;
+  background-color: #fff9e5;
+}
+
+.label-low {
+  border-color: #17a2b8;
+  background-color: #e3f7fb;
+}
+
+.label-treated {
+  border-color: #adb5bd;
+  background-color: #f1f3f5;
+}
+
+.label-urgent {
+  border-color: #dc3545;
+  background-color: #fff0f0;
+}
+
+.label-soon {
+  border-color: #ffc107;
+  background-color: #fffbe6;
+}
+
+.label-ok {
+  border-color: #28a745;
+  background-color: #ebfbee;
+}
+
+.text-muted { color: #6c757d; }
+.text-success { color: #198754; }
+.text-warning { color: #ffc107; }
+.text-danger { color: #dc3545; }
+.text-primary { color: #0d6efd; }
+
+.btn-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.btn-link:hover i {
+  opacity: 0.7;
+}
+
+
+</style>
+
+<div class="container-box">
+  <h2 class="section-title">ניהול בקשות</h2>
+
+
+  {% if user.role == 0 or user.role == 1 %}
+  <div class="mb-4 text-end">
+    <a href="{% url 'create_request' %}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus me-1"></i> בקשה חדשה
+    </a>
+  </div>
+
+   <div class="chart-container" style="max-width: 300px; margin: 0 auto 20px;">
+  <div 
+    style="position: relative; height: 300px; width: 200px; margin: 0 auto;" 
+    class="{% if status_counts.0 == 0 and status_counts.1 == 0 and status_counts.2 == 0 %}no-data-chart{% endif %}"
+  >
+    <canvas id="statusChart"></canvas>
+  </div>
+
+  {% if status_counts.0 == 0 and status_counts.1 == 0 and status_counts.2 == 0 %}
+    <div style="text-align: center; color: #333; font-size: 20px; margin-top: 5px;">
+      No data yet
     </div>
+  {% endif %}
+</div>
 
-    <div class="card shadow mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">חיפוש וסינון</h5>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="{% url 'list_requests' %}" id="filter-form">
-                <div class="row g-3">
-                    <div class="col-md-12">
-                        <div class="input-group">
-                            <input type="text" name="q" class="form-control" placeholder="חיפוש בקשות..." value="{{ search_query|default:'' }}">
-                            <button class="btn btn-primary" type="submit">
-                                <i class="fas fa-search me-2"></i>חיפוש
-                            </button>
-                        </div>
-                    </div>
 
-                    <div class="col-md-3">
-                        <label for="status" class="form-label">סטטוס</label>
-                        <select name="status" id="status" class="form-select">
-                            <option value="">כל הסטטוסים</option>
-                            {% for status_value, status_name in statuses %}
-                                {% with status_str=status_value|stringformat:"i" %}
-                                    <option value="{{ status_value }}" {% if filters.status == status_str %}selected{% endif %}>{{ status_name }}</option>
-                                {% endwith %}
-                            {% endfor %}
-                        </select>
-                    </div>
+  {% endif %}
 
-                    <div class="col-md-3">
-                        <label for="pipeline_status" class="form-label">שלב בתהליך</label>
-                        <select name="pipeline_status" id="pipeline_status" class="form-select">
-                            <option value="">כל השלבים</option>
-                            {% for pipeline_value, pipeline_name in pipeline_statuses %}
-                                {% with pipeline_str=pipeline_value|stringformat:"i" %}
-                                    <option value="{{ pipeline_value }}" {% if filters.pipeline_status == pipeline_str %}selected{% endif %}>{{ pipeline_name }}</option>
-                                {% endwith %}
-                            {% endfor %}
-                        </select>
-                    </div>
+  <div class="filter-bar mb-4">
+    <input type="text" id="searchTitle" placeholder="חיפוש לפי כותרת..." class="form-control d-inline-block w-auto me-2 mb-2" />
 
-                    <div class="col-md-3">
-                        <label for="priority" class="form-label">דחיפות</label>
-                        <select name="priority" id="priority" class="form-select">
-                            <option value="">כל הדחיפויות</option>
-                            {% for priority_value, priority_name in priorities %}
-                                {% with priority_str=priority_value|stringformat:"i" %}
-                                    <option value="{{ priority_value }}" {% if filters.priority == priority_str %}selected{% endif %}>{{ priority_name }}</option>
-                                {% endwith %}
-                            {% endfor %}
-                        </select>
-                    </div>
+    <select id="statusFilter" class="form-select d-inline-block w-auto me-2 mb-2">
+      <option value="">כל הסטטוסים</option>
+      <option value="ממתין">ממתין לטיפול</option>
+      <option value="מאושר">מאושר</option>
+      <option value="נדחה">נדחה</option>
+    </select>
 
-                    <div class="col-md-3">
-                        <label for="department" class="form-label">מחלקה</label>
-                        <select name="department" id="department" class="form-select">
-                            <option value="">כל המחלקות</option>
-                            {% for dept in departments %}
-                                {% with dept_id_str=dept.id|stringformat:"i" %}
-                                    <option value="{{ dept.id }}" {% if filters.department == dept_id_str %}selected{% endif %}>{{ dept.name }}</option>
-                                {% endwith %}
-                            {% endfor %}
-                        </select>
-                    </div>
+    <select id="priorityFilter" class="form-select d-inline-block w-auto me-2 mb-2">
+      <option value="">כל רמות הדחיפות</option>
+      <option value="גבוהה">גבוהה</option>
+      <option value="בינונית">בינונית</option>
+      <option value="נמוכה">נמוכה</option>
+    </select>
+  </div>
 
-                    <div class="col-md-3">
-                        <label for="sla" class="form-label">סטטוס SLA</label>
-                        <select name="sla" id="sla" class="form-select">
-                            <option value="">כל הסטטוסים</option>
-                            <option value="overdue" {% if filters.sla == 'overdue' %}selected{% endif %}>חורג מזמן</option>
-                            <option value="at_risk" {% if filters.sla == 'at_risk' %}selected{% endif %}>בסיכון</option>
-                            <option value="on_track" {% if filters.sla == 'on_track' %}selected{% endif %}>בזמן תקין</option>
-                        </select>
-                    </div>
+  {% if user.role != 0 %}
+    <form method="post" action="{% url 'list_requests' %}">
+      {% csrf_token %}
+      <div class="table-responsive">
+        <table id="sortable-table">
+          <thead>
+            <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+              <th>מס'</th>
+              <th>שם הסטודנט</th>
+              <th>כותרת</th>
+              <th>סטטוס</th>
+              <th>דחיפות</th>
+              <th>זמן לטיפול</th>
+              <th>פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for req in page_obj %}
+          <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+            <td>{{ req.id }}</td>
+            <td>{{ req.student.get_full_name }}</td>
+            <td>{{ req.get_title_display|truncatechars:30 }}</td>
 
-                    <div class="col-md-3">
-                        <label for="date_from" class="form-label">מתאריך</label>
-                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from|default:'' }}">
-                    </div>
+            <!-- סטטוס -->
+            <td>
+              {% if req.status == 0 %}
+                <i class="fas fa-hourglass-half text-muted"></i> ממתין
+              {% elif req.status == 1 %}
+                <i class="fas fa-check-circle text-success"></i> מאושר
+              {% else %}
+                <i class="fas fa-times-circle text-danger"></i> נדחה
+              {% endif %}
+            </td>
 
-                    <div class="col-md-3">
-                        <label for="date_to" class="form-label">עד תאריך</label>
-                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to|default:'' }}">
-                    </div>
+            <!-- דחיפות -->
+            <td>
+              {% if req.priority == 3 %}
+                גבוהה
+              {% elif req.priority == 2 %}
+              בינונית
+              {% else %}
+              נמוכה
+              {% endif %}
+            </td>
 
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary me-2">החל סינון</button>
-                        <a href="{% url 'list_requests' %}" class="btn btn-outline-secondary">נקה סינון</a>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+            <!-- זמן לטיפול -->
+            <td>
+              {% if req.status == 0 %}
+                {{ req.get_remaining_days_display|safe }}
+              {% else %}
+                טופל
+              {% endif %}
+            </td>
 
-    <div class="card shadow">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">תוצאות ({{ page_obj.paginator.count }})</h5>
-            <span class="badge bg-secondary">הצגת {{ page_obj|length }} מתוך {{ page_obj.paginator.count }} בקשות</span>
-        </div>
-        <div class="card-body">
-            {% if page_obj %}
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped">
-                        <thead>
-                            <tr>
-                                <th>מס'</th>
-                                <th>כותרת</th>
-                                <th>מחלקה</th>
-                                {% if user.role > 0 %}
-                                <th>סטודנט</th>
-                                {% endif %}
-                                <th>סטטוס</th>
-                                <th>שלב בתהליך</th>
-                                <th>דחיפות</th>
-                                <th>תאריך יצירה</th>
-                                <th>SLA</th>
-                                <th>פעולות</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for req in page_obj %}
-                                <tr>
-                                    <td>{{ req.id }}</td>
-                                    <td>{{ req.get_title_display|truncatechars:40 }}</td>
-                                    <td>{{ req.dept.name }}</td>
-                                    {% if user.role > 0 %}
-                                    <td>{{ req.student.get_full_name }}</td>
-                                    {% endif %}
-                                    <td>
-                                        <span class="badge
-                                            {% if req.status == 0 %}bg-warning
-                                            {% elif req.status == 1 %}bg-success
-                                            {% else %}bg-danger{% endif %}">
-                                            {{ req.get_status_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge
-                                            {% if req.pipeline_status == 0 %}bg-info
-                                            {% elif req.pipeline_status == 1 %}bg-primary
-                                            {% elif req.pipeline_status == 2 %}bg-primary
-                                            {% elif req.pipeline_status == 3 %}bg-warning
-                                            {% elif req.pipeline_status == 4 %}bg-success
-                                            {% elif req.pipeline_status == 5 %}bg-danger
-                                            {% else %}bg-secondary{% endif %}">
-                                            {{ req.get_current_status_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge
-                                            {% if req.priority == 3 %}bg-danger
-                                            {% elif req.priority == 2 %}bg-warning
-                                            {% elif req.priority == 1 %}bg-info
-                                            {% else %}bg-secondary{% endif %}">
-                                            {{ req.get_priority_display }}
-                                        </span>
-                                    </td>
-                                    <td>{{ req.created|date:"d/m/Y" }}</td>
-                                    <td>
-                                        {% if req.status == 0 %}
-                                            {% with sla_status=req.get_sla_status %}
-                                                <span class="badge
-                                                    {% if sla_status == 'Overdue' %}bg-danger
-                                                    {% elif sla_status == 'At Risk' %}bg-warning
-                                                    {% else %}bg-success{% endif %}">
-                                                    {{ sla_status }}
-                                                </span>
-                                            {% endwith %}
-                                        {% else %}
-                                            <span class="badge bg-secondary">פתור</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'request_detail' req.id %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i> צפייה
-                                        </a>
-                                        {% if user.role > 0 and req.status == 0 %}
-                                            <a href="{% url 'update_request_status' req.id %}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-edit"></i> עדכון
-                                            </a>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            <!-- פעולות -->
+            <td>
+              <a href="{% url 'request_detail' req.id %}" class="btn btn-link text-decoration-none" title="צפה">
+                <i class="fas fa-eye text-primary"></i>
+              </a>
+              {% if user.role == 1 or user.role == 2 or user.role == 3 %}
+              <a href="{% url 'update_request_status' req.id %}" class="btn btn-link text-decoration-none" title="עדכון">
+                <i class="fas fa-pen text-warning"></i>
+              </a>
+              <button type="submit" name="delete_request_id" value="{{ req.id }}" class="btn btn-link text-decoration-none" onclick="return confirm('האם למחוק את הבקשה?');" title="מחק">
+                <i class="fas fa-trash text-danger"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+          </tbody>
+        </table>
+      </div>
+    </form>
 
-                {% if page_obj.paginator.num_pages > 1 %}
-                <nav aria-label="Page navigation" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% url_replace request 'page' 1 %}" aria-label="First">
-                                    <span aria-hidden="true">&laquo;&laquo;</span>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?{% url_replace request 'page' page_obj.previous_page_number %}" aria-label="Previous">
-                                    <span aria-hidden="true">&laquo;</span>
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#" aria-label="First">
-                                    <span aria-hidden="true">&laquo;&laquo;</span>
-                                </a>
-                            </li>
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#" aria-label="Previous">
-                                    <span aria-hidden="true">&laquo;</span>
-                                </a>
-                            </li>
-                        {% endif %}
+  {% else %}
+    <form method="post" action="{% url 'list_requests' %}">
+      {% csrf_token %}
+      <div class="table-responsive">
+        <table id="sortable-table">
+          <thead>
+            <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+              <th>מס'</th>
+              <th>שם הסטודנט</th>
+              <th>כותרת</th>
+              <th>סטטוס</th>
+              <th>זמן לטיפול</th>
+              <th>פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for req in page_obj %}
+          <tr {% if req.status == 0 and "באיחור" in req.get_remaining_days_display %}style="background-color: #fdeaea;"{% endif %}>
+            <td>{{ req.id }}</td>
+            <td>{{ req.student.get_full_name }}</td>
+            <td>{{ req.get_title_display|truncatechars:30 }}</td>
 
-                        {% for i in page_obj.paginator.page_range %}
-                            {% if page_obj.number == i %}
-                                <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
-                            {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                                <li class="page-item"><a class="page-link" href="?{% url_replace request 'page' i %}">{{ i }}</a></li>
-                            {% endif %}
-                        {% endfor %}
+            <!-- סטטוס -->
+            <td>
+              {% if req.status == 0 %}
+                <i class="fas fa-hourglass-half text-muted"></i> ממתין
+              {% elif req.status == 1 %}
+                <i class="fas fa-check-circle text-success"></i> מאושר
+              {% else %}
+                <i class="fas fa-times-circle text-danger"></i> נדחה
+              {% endif %}
+            </td>
 
-                        {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?{% url_replace request 'page' page_obj.next_page_number %}" aria-label="Next">
-                                    <span aria-hidden="true">&raquo;</span>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?{% url_replace request 'page' page_obj.paginator.num_pages %}" aria-label="Last">
-                                    <span aria-hidden="true">&raquo;&raquo;</span>
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#" aria-label="Next">
-                                    <span aria-hidden="true">&raquo;</span>
-                                </a>
-                            </li>
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#" aria-label="Last">
-                                    <span aria-hidden="true">&raquo;&raquo;</span>
-                                </a>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-                {% endif %}
-            {% else %}
-                <div class="alert alert-info text-center">
-                    <p class="mb-0">לא נמצאו בקשות התואמות את הקריטריונים שלך.</p>
-                </div>
-            {% endif %}
-        </div>
-    </div>
+            <!-- זמן לטיפול -->
+            <td>
+              {% if req.status == 0 %}
+                {{ req.get_remaining_days_display|safe }}
+              {% else %}
+                טופל
+              {% endif %}
+            </td>
+
+            <!-- פעולות -->
+            <td>
+              <a href="{% url 'request_detail' req.id %}" class="btn btn-link text-decoration-none" title="צפה">
+                <i class="fas fa-eye text-primary"></i>
+              </a>
+              {% if user.role == 1 or user.role == 2 or user.role == 3 %}
+              <a href="{% url 'update_request_status' req.id %}" class="btn btn-link text-decoration-none" title="עדכון">
+                <i class="fas fa-pen text-warning"></i>
+              </a>
+              <button type="submit" name="delete_request_id" value="{{ req.id }}" class="btn btn-link text-decoration-none" onclick="return confirm('האם למחוק את הבקשה?');" title="מחק">
+                <i class="fas fa-trash text-danger"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+          </tbody>
+        </table>
+      </div>
+    </form>
+  {% endif %}
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Enable automatic form submission when filters change
-        const filterControls = document.querySelectorAll('#filter-form select, #filter-form input[type="date"]');
-        filterControls.forEach(control => {
-            control.addEventListener('change', function() {
-                document.getElementById('filter-form').submit();
-            });
-        });
-    });
+  document.addEventListener('DOMContentLoaded', function () {
+    const table = document.getElementById('sortable-table');
+    if (table) new Tablesort(table);
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const titleInput = document.getElementById("searchTitle");
+    const statusFilter = document.getElementById("statusFilter");
+    const priorityFilter = document.getElementById("priorityFilter");
+
+    function filterTable() {
+      const title = titleInput.value.toLowerCase();
+      const status = statusFilter.value;
+      const priority = priorityFilter.value;
+      const rows = document.querySelectorAll("#sortable-table tbody tr");
+
+      rows.forEach((row) => {
+        const titleText = row.children[2].textContent.toLowerCase();
+        const statusText = row.children[3].textContent.trim();
+        const priorityText = row.children[4].textContent.trim();
+
+        const matchTitle = titleText.includes(title);
+        const matchStatus = !status || statusText === status;
+        const matchPriority = !priority || priorityText === priority;
+
+        row.style.display = matchTitle && matchStatus && matchPriority ? "" : "none";
+      });
+    }
+
+    titleInput.addEventListener("input", filterTable);
+    statusFilter.addEventListener("change", filterTable);
+    priorityFilter.addEventListener("change", filterTable);
+  });
+
+const ctx = document.getElementById('statusChart');
+
+if (ctx) {
+  const statusCounts = [
+    {{ status_counts.0 }},
+    {{ status_counts.1 }},
+    {{ status_counts.2 }}
+  ];
+
+  const hasData = statusCounts.some(count => count > 0);
+
+  const chartData = hasData
+    ? {
+        labels: ['ממתין', 'מאושר', 'נדחה'],
+        datasets: [{
+          data: statusCounts,
+          backgroundColor: ['#dcd767', '#39a653', '#e6959c'],
+          borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+          borderWidth: 2
+        }]
+      }
+    : {
+        labels: ['אין בקשות'],
+        datasets: [{
+          data: [1],
+          backgroundColor: ['#ffffff'],
+          borderColor: ['#000000'],
+          borderWidth: 2
+        }]
+      };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: hasData,
+        position: 'bottom'
+      },
+      tooltip: {
+        enabled: hasData
+      }
+    }
+  };
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: chartData,
+    options: chartOptions
+  });
+}
+
+
 </script>
 {% endblock %}

@@ -50,7 +50,7 @@
     <div class="mb-3">
       <label for="course" class="form-label">קורס</label>
       <select class="form-select" id="course" name="course" required>
-        <option value="-1" selected>אחר</option>
+        <option value="-1" selected>בחר קורס</option>
         {% for course in courses %}
           <option value="{{ course.id }}">{{ course.name }}</option>
         {% endfor %}

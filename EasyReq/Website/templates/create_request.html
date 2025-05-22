@@ -46,6 +46,7 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
+    <!-- בחירת קורס -->
     <div class="mb-3">
       <label for="course" class="form-label">קורס</label>
       <select class="form-select" id="course" name="course" required>
@@ -56,6 +57,7 @@
       </select>
     </div>
 
+    <!-- סוג הבקשה -->
     <div class="mb-3">
       <label for="title" class="form-label">סוג הבקשה</label>
       <select class="form-select" id="title" name="title" required>
@@ -65,6 +67,7 @@
       </select>
     </div>
 
+    <!-- עורך טקסט עשיר -->
     <div class="mb-3">
       <label for="editorjs" class="form-label">תיאור הבקשה</label>
       <div id="editorjs" contenteditable="true"></div>
@@ -72,27 +75,21 @@
       <div class="form-text">תאר את הבקשה שלך בצורה מפורטת כדי לזרז את תהליך הטיפול.</div>
     </div>
 
-    <div class="mb-3">
-      <label for="priority" class="form-label">דחיפות</label>
-      <select class="form-select" id="priority" name="priority" required disabled>
-        <option value="0">נמוכה</option>
-        <option value="1" selected>בינונית</option>
-        <option value="2">גבוהה</option>
-        <option value="3">דחופה</option>
-      </select>
-    </div>
 
+    <!-- קובץ מצורף -->
     <div class="mb-3">
       <label for="attachment" class="form-label">קובץ מצורף (אופציונלי)</label>
       <input class="form-control" type="file" id="attachment" name="attachment">
     </div>
 
+    <!-- כפתור שליחה -->
     <div class="text-end">
       <button type="submit" class="btn btn-primary send-btn">שלח בקשה</button>
     </div>
   </form>
 </div>
 
+<!-- Editor.js -->
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/header"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/list"></script>

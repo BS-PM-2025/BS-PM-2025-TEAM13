@@ -5,424 +5,302 @@
 
 {% block content %}
 <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
 <style>
   body {
-    background-color: #eaf0fb;
+    background-color: #eef6fc;
     font-family: 'Calibri', sans-serif;
     direction: rtl;
-    font-size: 18px;
     margin: 0;
     padding: 0;
+    color: #2a3f54;
   }
+.text-center {
+  text-align: center;
+}
+.btn-update-wrapper {
+  margin: 24px 0;
+}
 
   .page-wrapper {
-    min-height: 100vh;
+    padding: 40px 0;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    padding: 60px 0;
   }
 
   .request-container {
-    background: white;
-    padding: 50px 40px;
     width: 1000px;
-    border-radius: 20px;
-    box-shadow: 0 12px 40px rgba(46, 70, 122, 0.7);
+    background: #fff;
+    border: 2px solid #a3d4f7;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+
+  .request-header {
+    padding: 12px;
+    border-bottom: 2px solid #a3d4f7;
+    background: #fff;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .request-header .close-btn {
+    color: #5bb1eb;
+    font-size: 1.2rem;
+    text-decoration: none;
+  }
+  .request-header .close-btn:hover {
+    color: #3d9adb;
   }
 
   .card {
     border: none;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgb(255, 255, 255);
-    margin-bottom: 30px;
-  }
-
-  .card-header {
-    font-weight: bold;
-    font-size: 20px;
-    padding: 18px 24px;
-    text-align: center;
-    color: white;
-    background: linear-gradient(to right, rgba(91, 132, 198, 0.8), rgba(47, 103, 227, 0.7));
-  }
-
-  h4, h5, h6 {
-    text-align: center;
-    font-weight: bold;
-  }
-
-  h4 {
-    color: white;
-  }
-
-  .badge.bg-secondary {
-    background-color: #3b4cca !important;
-    color: white !important;
+    border-radius: 0;
+    margin: 0;
   }
 
   .card-body {
-    padding: 24px;
+    padding: 24px 32px;
   }
 
-  .btn-primary, .btn-outline-primary, .btn-success, .btn-outline-secondary {
-    font-size: 16px;
-    padding: 12px 20px;
-    border-radius: 10px;
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #d0e6f9;
+    padding-bottom: 6px;
+    color: #197fc3;
   }
 
-  .btn-primary {
-    background-color: #2d6cdf;
-    border: none;
-  }
-
-  .btn-primary:hover {
-    background-color: #1e4fb6;
-  }
-
-  .btn-success {
-    background-color: #1fb2a6;
-    border: none;
-  }
-
-  .btn-success:hover {
-    background-color: #15958b;
-  }
-
-  .btn-outline-primary {
-    border-color: #2d6cdf;
-    color: #2d6cdf;
-  }
-
-  .btn-outline-primary:hover {
-    background-color: #2d6cdf;
-    color: white;
-  }
-
-  .btn-outline-secondary {
-    border-color: #6c757d;
-    color: #6c757d;
-    background-color: white;
-    transition: 0.3s ease;
-  }
-
-  .btn-outline-secondary:hover {
-    background-color: #6c757d;
-    color: white;
-  }
-
-  .status-point {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: #e9ecef;
-    margin: 0 auto;
-    display: flex;
+  .back-btn {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    border: 2px solid #ced4da;
+    gap: 0.5rem;
+    background: #fff;
+    color: #5bb1eb;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid #5bb1eb;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .back-btn:hover {
+    background: #5bb1eb;
+    color: #fff;
   }
 
-  .status-point span {
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 16px 32px;
+    margin-bottom: 24px;
+  }
+  .details-grid dt {
     font-weight: bold;
-    color: #437bb1;
+    color: #197fc3;
   }
-
-  .status-complete {
-    background-color: #2d6cdf;
-    border-color: #2d6cdf;
-    color: white;
-  }
-
-  .status-current {
-    border: 3px solid #2d6cdf;
-    box-shadow: 0 0 0 4px rgba(45, 108, 223, 0.3);
-  }
-
-  .status-label {
-    font-size: 0.8rem;
-    margin-top: 6px;
-    color: #6c757d;
-  }
-
-  .status-complete + .status-label,
-  .status-current + .status-label {
-    font-weight: bold;
-    color: #2d6cdf;
+  .details-grid dd {
+    margin: 0;
   }
 
   .badge {
-    font-size: 16px;
-    padding: 6px 12px;
-    border-radius: 8px;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
   }
-
-  .comments-list .comment {
-    border: 1px solid #dee2e6;
-    background-color: #f7faff;
+  .badge-status {
+    background: #e3f2fd;
+    color: #197fc3;
   }
+  .badge-warning { background: #fff4e5; color: #f0ad4e; }
+  .badge-success { background: #e6f4ea; color: #39a653; }
+  .badge-danger  { background: #fdecea; color: #d9534f; }
 
-  #comment {
-    border: 2px solid #2d6cdf;
-    border-radius: 10px;
-    padding: 15px;
-    background-color: #f0f7ff;
-    font-size: 16px;
-    transition: box-shadow 0.3s ease;
-    width: 100%;
-    max-width: 700px;
-    margin: 0 auto;
-    display: block;
+  .pipeline {
+    margin-bottom: 24px;
   }
-
-  #comment:focus {
-    box-shadow: 0 0 8px rgba(45, 108, 223, 0.5);
-    outline: none;
-  }
-
-  .comment-form-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .comment-form-wrapper button {
-    margin-top: 15px;
-    align-self: center;
-  }
-
-  .back-button-wrapper {
+  .pipeline .step {
+    display: inline-block;
+    width: 30px; height: 30px;
+    line-height: 30px;
     text-align: center;
-    margin-bottom: 30px;
+    border: 2px solid #a3d4f7;
+    border-radius: 50%;
+    margin-right: 8px;
+    color: #197fc3;
   }
+  .pipeline .step.complete { background: #d0e6f9; }
+  .pipeline .step.current  { background: #afe1f8; }
+
+  .comments-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .comment {
+    border: 1px solid #dbeefc;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    background: #f5fbff;
+  }
+  .comment.staff { background: #edf7fe; }
+
+  textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #a3d4f7;
+    border-radius: 4px;
+    resize: vertical;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: #5bb1eb;
+    box-shadow: 0 0 4px rgba(91,177,235,0.4);
+  }
+
+  .btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-action {
+    background: #5bb1eb;
+    color: #fff;
+  }
+  .btn-action:hover {
+    background: #3d9adb;
+  }
+  .btn-alt {
+    background: #f0f8ff;
+    color: #197fc3;
+  }
+  .btn-alt:hover {
+    background: #e0f1ff;
+  }
+
+
+.btn-update-blue {
+  background: linear-gradient(135deg, #a3d4f7 0%, #5bb1eb 100%);
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(91,177,235,0.3);
+  transition: background 0.3s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.btn-update-blue:hover {
+  background: linear-gradient(135deg, #5bb1eb 0%, #3d9adb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(91,177,235,0.4);
+}
+
+.btn-update-blue i {
+  font-size: 1.1rem;
+}
+
 </style>
 
-    <div class="page-wrapper">
+<div class="page-wrapper">
   <div class="request-container">
-<div class="card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <a href="{% url 'list_requests' %}" class="btn btn-sm btn-outline-secondary">
-        <i class="fas fa-arrow-left me-1"></i> חזרה לרשימת הבקשות
-      </a>
+
+    <div class="request-header">
+      <a href="{% url 'list_requests' %}" class="close-btn"><i class="fas fa-times"></i></a>
     </div>
- </div>
-    <div class="card">
-      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h6 class="badge bg-secondary fs-6">בקשה מספר: {{ request.id }}</h6>
 
-        <h4 class="mb-0">סוג הבקשה:{{ request.get_title_display }}</h4>
-        <span class="badge fs-6
-          {% if request.status == 0 %}bg-warning
-          {% elif request.status == 1 %}bg-success
-          {% else %}bg-danger{% endif %}">
-          סטטוס:{{ request.get_status_display }}
-        </span>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-8">
-            <h5 class="border-bottom pb-2 mb-3">פרטי הבקשה:</h5>
-            <p>{{ request.description|linebreaks }}</p>
 
-      {% if request.attachments %}
-  <h6><i class="fas fa-paperclip me-2"></i>קובץ מצורף:</h6>
-  {% with ext=request.attachments.name|slice:"-4"|lower %}
-    {% if ext == ".pdf" %}
-      <iframe src="{{ request.attachments.url }}" width="100%" height="500px"
-              style="border: 1px solid #ccc; border-radius: 10px;"></iframe>
-    {% elif ext == ".jpg" or ext == ".png" or ext == ".gif" %}
-      <img src="{{ request.attachments.url }}" alt="קובץ מצורף"
-           class="img-fluid rounded border mt-2" style="max-height: 400px;" />
-    {% else %}
-      <a href="{{ request.attachments.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-        <i class="fas fa-download me-1"></i> הורד קובץ
-      </a>
-    {% endif %}
-  {% endwith %}
+    <div class="card-body">
+      <h2 class="section-title">פרטי בקשה</h2>
+      <dl class="details-grid">
+        <dt>בקשה מס׳:</dt><dd>{{ request.id }}</dd>
+        <dt>סוג הבקשה:</dt><dd>{{ request.get_title_display }}</dd>
+        <dt>סטטוס:</dt>
+          <dd>
+            <span class="badge badge-status">
+              {{ request.get_status_display }}
+            </span>
+          </dd>
+        <dt>מגיש:</dt><dd>{{ request.student.get_full_name }}</dd>
+        <dt>מחלקה:</dt><dd>{{ request.dept.name }}</dd>
+        {% if request.course %}
+        <dt>קורס:</dt><dd>{{ request.course.name }}</dd>
+        {% endif %}
+        <dt>תאריך יצירה:</dt><dd>{{ request.created|date:"d/m/Y H:i" }}</dd>
+        {% if request.resolved_date %}
+        <dt>תאריך סגירה:</dt><dd>{{ request.resolved_date|date:"d/m/Y H:i" }}</dd>
+        {% endif %}
+      </dl>
+      {% if request.description %}
+        <h3 class="section-title">תיאור הבקשה</h3>
+        <p>{{ request.description|linebreaks }}</p>
+      {% endif %}
+    </div>
+
+    <!-- שלבי טיפול -->
+    <div class="card-body pipeline">
+      <h2 class="section-title">שלבי הטיפול</h2>
+      {% for s_value,s_name in request.PIPELINE_STATUSES %}
+        <div class="step
+          {% if request.pipeline_status > forloop.counter0 %}complete{% endif %}
+          {% if request.pipeline_status == forloop.counter0 %}current{% endif %}">
+          {{ forloop.counter }}
+        </div>
+        <span>{{ s_name }}</span>
+      {% endfor %}
+    </div>
+{% if user.role != 0 %}
+  <div class="btn-update-wrapper text-center">
+    <a href="{% url 'update_request_status' request.id %}"
+       class="btn-update-blue">
+      <i class="fas fa-edit"></i> עדכן סטטוס
+    </a>
+  </div>
 {% endif %}
 
-          </div>
 
-          <div class="col-md-4">
-            <div class="card mb-3">
-              <div class="card-header bg-light">
-                פרטים נוספים
-              </div>
-              <div class="card-body">
-                <ul class="list-group list-group-flush">
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>סטטוס:</span>
-                    <span class="badge
-                      {% if request.status == 0 %}bg-warning
-                      {% elif request.status == 1 %}bg-success
-                      {% else %}bg-danger{% endif %}">
-                      {{ request.get_status_display }}
-                    </span>
-                  </li>
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>תאריך יצירה:</span>
-                    <span>{{ request.created|date:"d/m/Y H:i" }}</span>
-                  </li>
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>מחלקה:</span>
-                    <span>{{ request.dept.name }}</span>
-                  </li>
-                  {% if request.course %}
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>קורס:</span>
-                    <span>{{ request.course.name }}</span>
-                  </li>
-                  {% endif %}
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>מגיש:</span>
-                    <span>{{ request.student.get_full_name }}</span>
-                  </li>
-                  {% if request.assigned_to.all %}
-                  <li class="list-group-item">
-                    <span>מטפלים:</span>
-                    <ul class="mt-2">
-                      {% for assignee in request.assigned_to.all %}
-                      <li>{{ assignee.get_full_name }}</li>
-                      {% endfor %}
-                    </ul>
-                  </li>
-                  {% endif %}
-                  {% if request.resolved_date %}
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>תאריך סגירה:</span>
-                    <span>{{ request.resolved_date|date:"d/m/Y H:i" }}</span>
-                  </li>
-                  {% endif %}
-                  {% if request.status != 0 %}
-                  <li class="list-group-item">
-                    <span>הערת מטפל:</span>
-                    <p class="mt-2">{{ request.resolution_notes|default:"אין הערות"|linebreaks }}</p>
-                  </li>
-                  {% endif %}
-                  {% if request.status == 0 %}
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>סטטוס SLA:</span>
-                    <span class="badge
-                      {% with sla_status=request.get_sla_status %}
-                        {% if sla_status == 'בחריגה' %}bg-danger
-                        {% elif sla_status == 'בסיכון' %}bg-warning
-                        {% else %}bg-success{% endif %}">
-                        {{ sla_status }}
-                      {% endwith %}
-                    </span>
-                  </li>
-                  {% endif %}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header bg-info text-white">
-        סטטוס טיפול בבקשה
-      </div>
+
+    {% if request.attachments %}
       <div class="card-body">
-        <div class="progress mb-4" style="height: 25px;">
-          {% with status=request.pipeline_status %}
-          <div class="progress-bar
-            {% if status == 0 %}bg-info
-            {% elif status == 1 %}bg-primary
-            {% elif status == 2 %}bg-primary
-            {% elif status == 3 %}bg-warning
-            {% elif status == 4 %}bg-success
-            {% elif status == 5 %}bg-danger
-            {% elif status == 6 %}bg-secondary{% endif %}"
-            style="width: {% widthratio status 6 100 %}%;">
-            {{ request.get_current_status_display }}
-          </div>
-          {% endwith %}
-        </div>
-
-        <div class="status-timeline">
-          <div class="row text-center">
-            {% for s_value, s_name in request.PIPELINE_STATUSES %}
-            <div class="col">
-              <div class="status-point
-                {% if request.pipeline_status >= s_value %}status-complete{% endif %}
-                {% if request.pipeline_status == s_value %}status-current{% endif %}">
-                <span>{{ s_value|add:"1" }}</span>
-              </div>
-              <div class="status-label">{{ s_name }}</div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-
-
-      </div>
-    </div>
-
-    {% if user.role > 0 and request.status == 0 %}
-    <div class="card">
-      <div class="card-header bg-secondary text-white">
-        פעולות צוות
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-6">
-            <a href="{% url 'update_request_status' request.id %}" class="btn btn-primary w-100">
-              <i class="fas fa-edit me-2"></i>עדכן סטטוס
-            </a>
-          </div>
-          {% if not request.assigned_to %}
-          <div class="col-md-6">
-            <form action="{% url 'assign_request' request.id %}" method="post">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-success w-100">
-                <i class="fas fa-user-check me-2"></i>קח לטיפולי
-              </button>
-            </form>
-          </div>
+        <h2 class="section-title">קובץ מצורף</h2>
+        {% with ext=request.attachments.name|slice:"-4"|lower %}
+          {% if ext == ".pdf" %}
+            <iframe src="{{ request.attachments.url }}" width="100%" height="400" style="border:1px solid #a3d4f7;border-radius:4px"></iframe>
+          {% else %}
+            <img src="{{ request.attachments.url }}" alt="Attachment"
+                 style="max-width:100%;border:1px solid #a3d4f7;border-radius:4px" />
           {% endif %}
-        </div>
+        {% endwith %}
       </div>
-    </div>
     {% endif %}
 
-    <div class="card">
-      <div class="card-header bg-light">
-        הערות ותקשורת
-      </div>
-      <div class="card-body">
-        <div class="comments-list mb-4">
-          {% for comment in comments %}
-          <div class="comment mb-3 p-3 {% if comment.user == request.student %}bg-light{% else %}bg-info bg-opacity-10{% endif %} rounded">
-            <div class="d-flex justify-content-between">
-              <h6>{{ comment.user.get_full_name }}</h6>
-              <small>{{ comment.created|date:"d/m/Y H:i" }}</small>
-            </div>
-            <p class="mb-0">{{ comment.comment|linebreaks }}</p>
+    <div class="card-body">
+      <h2 class="section-title">הערות</h2>
+      <div class="comments-list">
+        {% for comment in comments %}
+          <div class="comment {% if comment.user != request.student %}staff{% endif %}">
+            <strong>{{ comment.user.get_full_name }}</strong>
+            <small class="text-muted">– {{ comment.created|date:"d/m/Y H:i" }}</small>
+            <div>{{ comment.comment|linebreaks }}</div>
           </div>
-          {% empty %}
-          <div class="alert alert-info">אין הערות עדיין. הוסף הערה כדי לשאול שאלה או לספק מידע נוסף.</div>
-          {% endfor %}
-        </div>
+        {% empty %}
+          <p>אין הערות</p>
+        {% endfor %}
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header bg-light">
-        הוסף תגובה חדשה
-      </div>
-      <div class="card-body">
-        <form method="post">
-          {% csrf_token %}
-          <div class="mb-3">
-            <textarea class="form-control" id="comment" name="comment" rows="3" required placeholder></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary">שלח הערה
-          </button>
-        </form>
-      </div>
+      <form method="post">
+        {% csrf_token %}
+        <textarea name="comment" rows="3" placeholder="כתוב תגובה…"></textarea>
+        <button type="submit" class="btn btn-action">שלח תגובה</button>
+      </form>
     </div>
 
   </div>

@@ -28,9 +28,6 @@
     margin-bottom: 30px;
     text-align: center;
   }
-  .table-responsive {
-    overflow-x: auto;
-  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -61,8 +58,6 @@
     padding: 10px;
     vertical-align: middle;
   }
-  
-  /* סגנון חדש לכפתורי פעולה */
   .action-btn {
     display: inline-flex;
     align-items: center;
@@ -76,44 +71,11 @@
     text-decoration: none;
     margin-right: 5px;
   }
-  
-  .action-btn:hover {
-    opacity: 0.85;
-  }
-  
-  .action-edit {
-    background-color: #fff7e6;
-    color: #d98300;
-  }
-  
-  .action-view {
-    background-color: #dfefff;
-    color: #1464c2;
-  }
-  
-  .action-delete {
-    background-color: #fdeaea;
-    color: #d33;
-  }
-  
-  .text-danger {
-    color: red;
-    font-weight: bold;
-  }
-  
-  .mb-4 {
-    margin-bottom: 1.5rem;
-  }
-  
-  .text-end {
-    text-align: end;
-  }
-  
-  /* סגנון לשורות ללא מרצים */
-  tr.no-lecturers {
-    background-color: #fdeaea;
-  }
-  
+  .action-edit { background-color: #fff7e6; color: #d98300; }
+  .action-view { background-color: #dfefff; color: #1464c2; }
+  .action-delete { background-color: #fdeaea; color: #d33; }
+  .action-btn:hover { opacity: 0.85; }
+
   .btn-primary {
     background-color: #2d6cdf;
     color: white;
@@ -126,10 +88,98 @@
     align-items: center;
     gap: 8px;
   }
-  
+
   .btn-primary:hover {
     background-color: #1e5bc6;
   }
+
+  .bulk-actions {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+    display: none;
+  }
+
+  .bulk-actions.show {
+    display: block;
+  }
+
+  .bulk-delete-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .bulk-delete-btn:hover {
+    background-color: #c82333;
+  }
+
+  .checkbox-cell {
+    width: 40px;
+    text-align: center;
+    display: none;
+  }
+
+  .checkbox-cell.show {
+    display: table-cell;
+  }
+
+  .selection-mode-active .clickable-row td:not(.checkbox-cell) {
+    pointer-events: none;
+  }
+
+  input[type="checkbox"] {
+    transform: scale(1.2);
+    cursor: pointer;
+  }
+
+  .selected-count {
+    font-weight: bold;
+    color: #2d6cdf;
+  }
+
+  .toggle-selection-btn.active {
+    background-color: #dc3545 !important;
+    color: white;
+  }
+
+  .assign-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  transition: 0.2s ease;
+  text-decoration: none;
+  margin: 3px 0;
+}
+
+.assign-btn-students {
+  background-color: #e9f3ff;
+  color: #1464c2;
+}
+
+.assign-btn-lecturers {
+  background-color: #e9f3ff; 
+  color: #1464c2; 
+}
+
+.assign-btn:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+
 </style>
 
 <div class="container-box">
@@ -141,10 +191,30 @@
     </a>
   </div>
 
-  <div class="table-responsive">
+
+  
+  <button type="button" class="btn btn-outline-primary btn-sm toggle-selection-btn" id="toggleCourseSelection" onclick="toggleCourseSelectionMode()">
+    <i class="fas fa-check-square me-1"></i> בחר קורסים
+  </button>
+
+  <div class="bulk-actions" id="courseBulkActions">
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <span>נבחרו: <span class="selected-count" id="courseSelectedCount">0</span> קורסים</span>
+      <button type="submit" form="coursesForm" class="bulk-delete-btn" id="courseBulkDeleteBtn" disabled>
+        <i class="fas fa-trash me-1"></i> מחק נבחרים
+      </button>
+    </div>
+  </div>
+
+
+  <form method="post" action="{% url 'bulk_delete_courses' %}" id="coursesForm">
+    {% csrf_token %}
     <table id="sortable-courses">
       <thead>
         <tr>
+          <th class="checkbox-cell">
+            <input type="checkbox" id="selectAllCourses" onchange="toggleAllCourseSelection()">
+          </th>
           <th>שם הקורס</th>
           <th>שנה</th>
           <th>מרצים משויכים</th>
@@ -154,9 +224,14 @@
       </thead>
       <tbody>
         {% for course in courses %}
-        <tr {% if not course.related_lecturers %}class="no-lecturers"{% endif %}>
+        <tr onclick="window.location.href='{% url 'edit_course' course.id %}'" class="clickable-row">
+          <td class="checkbox-cell" onclick="event.stopPropagation();">
+            <input type="checkbox" name="selected_courses" value="{{ course.id }}" class="course-checkbox" onchange="updateCourseBulkActions()">
+          </td>
           <td>{{ course.name }}</td>
-          <td>{{ course.year }}</td>
+          <td>
+            {% if course.year == 1 %}א{% elif course.year == 2 %}ב{% elif course.year == 3 %}ג{% elif course.year == 4 %}ד{% else %}{{ course.year }}{% endif %}
+          </td>
           <td>
             {% if course.related_lecturers %}
               {% for lecturer in course.related_lecturers %}
@@ -168,33 +243,84 @@
           </td>
           <td>{{ course.student_count }}</td>
           <td>
-            <a href="{% url 'edit_course' course.id %}" class="action-btn action-edit">
-              <i class="fas fa-edit"></i> ערוך
-            </a>
-            <a href="{% url 'assign_students_to_course' course.id %}" class="action-btn action-view">
+            <a href="{% url 'assign_students_to_course' course.id %}" class="assign-btn assign-btn-students">
               <i class="fas fa-user-graduate"></i> שיוך סטודנטים
             </a>
-            <a href="{% url 'assign_lecturers_to_course' course.id %}" class="action-btn action-view">
+            <a href="{% url 'assign_lecturers_to_course' course.id %}" class="assign-btn assign-btn-lecturers">
               <i class="fas fa-user-tie"></i> שיוך מרצים
             </a>
-            <form method="post" action="{% url 'delete_course' course.id %}" style="display:inline;" onsubmit="return confirm('האם למחוק את הקורס?');">
-              {% csrf_token %}
-              <button type="submit" class="action-btn action-delete">
-                <i class="fas fa-trash"></i> מחק
-              </button>
-            </form>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-  </div>
+  </form>
 </div>
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('sortable-courses');
-    if (table) new Tablesort(table);
+    new Tablesort(document.getElementById('sortable-courses'));
   });
+
+  let courseSelectionMode = false;
+
+  function toggleCourseSelectionMode() {
+    const toggleBtn = document.getElementById('toggleCourseSelection');
+    const checkboxCells = document.querySelectorAll('.checkbox-cell');
+    const table = document.getElementById('sortable-courses');
+    const bulkActions = document.getElementById('courseBulkActions');
+
+    courseSelectionMode = !courseSelectionMode;
+
+    checkboxCells.forEach(cell => cell.classList.toggle('show', courseSelectionMode));
+    table.classList.toggle('selection-mode-active', courseSelectionMode);
+    toggleBtn.classList.toggle('active', courseSelectionMode);
+
+    if (!courseSelectionMode) {
+      clearCourseSelection();
+      bulkActions.classList.remove('show');
+      toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר קורסים';
+    } else {
+      updateCourseBulkActions();
+    }
+  }
+
+  function toggleAllCourseSelection() {
+    if (!courseSelectionMode) return;
+    const selectAll = document.getElementById('selectAllCourses');
+    const checkboxes = document.querySelectorAll('.course-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateCourseBulkActions();
+  }
+
+  function updateCourseBulkActions() {
+    const checkboxes = document.querySelectorAll('.course-checkbox');
+    const checked = document.querySelectorAll('.course-checkbox:checked');
+    const count = document.getElementById('courseSelectedCount');
+    const bulkActions = document.getElementById('courseBulkActions');
+    const bulkBtn = document.getElementById('courseBulkDeleteBtn');
+    const toggleBtn = document.getElementById('toggleCourseSelection');
+    const selectAll = document.getElementById('selectAllCourses');
+
+    count.textContent = checked.length;
+    bulkActions.classList.toggle('show', checked.length > 0);
+    bulkBtn.disabled = checked.length === 0;
+    toggleBtn.innerHTML = checked.length > 0
+      ? '<i class="fas fa-times me-1"></i> בטל בחירה'
+      : '<i class="fas fa-check-square me-1"></i> בחר קורסים';
+
+    selectAll.checked = checked.length === checkboxes.length;
+    selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+  }
+
+  function clearCourseSelection() {
+    document.querySelectorAll('.course-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAllCourses');
+    if (selectAll) {
+      selectAll.checked = false;
+      selectAll.indeterminate = false;
+    }
+    updateCourseBulkActions();
+  }
 </script>
 {% endblock %}

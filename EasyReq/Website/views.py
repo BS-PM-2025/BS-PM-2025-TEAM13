@@ -1,19 +1,13 @@
-import json
-from django.db.models import Count, Q
-
+import json, re
+from django.db.models import Count, Q, Avg
 from django.http import HttpResponseRedirect, HttpResponse
-from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView
 from openai import OpenAI
-
-from .models import User, Course, Request, RequestStatus, RequestComment, Department
+from .models import User, Request, RequestStatus, RequestComment, Department, Review
 from .forms import RegistrationForm
-from django.shortcuts import render
 from django.http import JsonResponse
 from django.db import models
 from django.core.paginator import Paginator
@@ -227,18 +221,48 @@ class Registration(CreateView):
         path_ = "/registration-success/" + str(user.id)
         return redirect(path_, user_id=user.id)
 
+
 @login_required
 def profile_view(request):
     user = request.user
 
     if request.method == 'POST':
-        if 'profile_pic' in request.FILES:
-            user.profile_pic = request.FILES['profile_pic']
+        action = request.POST.get('action')
+
+        if action == 'update_email' and user.role == 0:  # Students only
+            new_email = request.POST.get('new_email')
+
+            # Validate email format
+            pattern = r'^[\w\.-]+@(ac\.sce\.ac\.il|sce\.ac\.il)$'
+            if not re.match(pattern, new_email):
+                messages.error(request, "עליך להזין מייל מכללתי בלבד")
+                return redirect('profile')
+
+            # Check if email is already in use
+            if User.objects.filter(email=new_email).exclude(id=user.id).exists():
+                messages.error(request, "כתובת האימייל כבר בשימוש")
+                return redirect('profile')
+
+            # Update email immediately
+            user.email = new_email
             user.save()
-            messages.success(request, "תמונת הפרופיל עודכנה בהצלחה!")
+            messages.success(request, "כתובת האימייל עודכנה בהצלחה!")
 
+        elif action == 'update_courses' and user.role == 1:  # Lecturers only
+            selected_course_ids = request.POST.getlist('selected_courses')
 
-        if 'old_password' in request.POST:
+            # Clear current courses and add selected ones
+            user.courses.clear()
+            if selected_course_ids:
+                valid_courses = Course.objects.filter(
+                    id__in=selected_course_ids,
+                    dept=user.department
+                )
+                user.courses.add(*valid_courses)
+
+            messages.success(request, "רשימת הקורסים עודכנה בהצלחה!")
+
+        elif action == 'update_password':
             password_form = PasswordChangeForm(user, request.POST)
             if password_form.is_valid():
                 user = password_form.save()
@@ -247,18 +271,28 @@ def profile_view(request):
             else:
                 for field, errors in password_form.errors.items():
                     for error in errors:
-                        messages.error(request, f"{field}: {error}")
+                        messages.error(request, f"{error}")
+
+        elif 'profile_pic' in request.FILES:
+            user.profile_pic = request.FILES['profile_pic']
+            user.save()
+            messages.success(request, "תמונת הפרופיל עודכנה בהצלחה!")
 
         return redirect('profile')
 
     else:
         password_form = PasswordChangeForm(user)
 
+    # Get all courses in department for lecturers
+    all_department_courses = []
+    if user.role == 1 and user.department:
+        all_department_courses = Course.objects.filter(dept=user.department).order_by('year', 'name')
+
     return render(request, 'profile.html', {
         'user': user,
-        'password_form': password_form
+        'password_form': password_form,
+        'all_department_courses': all_department_courses,
     })
-
 
 @login_required
 def create_request(request):
@@ -1731,65 +1765,157 @@ def get_openai_response(message):
         logger.debug(f"שגיאה בחיבור ל-OpenAI: {str(e)}")
         return f"אירעה שגיאה בתקשורת עם מערכת ה-AI. נא לנסות שוב מאוחר יותר. (שגיאה: {str(e)})"
 
-'''
-def assign_course_lecturers(request, course_id):
-    """Assign lecturers to a course"""
-    if not request.user.is_authenticated or request.user.role not in [2, 3]:
-        messages.error(request, "אין לך הרשאות לבצע פעולה זו.")
-        return redirect('home')
+
+@require_http_methods(["GET"])
+def rating_page(request):
+
+    all_reviews = Review.objects.select_related('user').order_by('-created_at')
+    total_reviews = all_reviews.count()
+
+    avg_rating_data = all_reviews.aggregate(avg_rating=Avg('rating'))
+    average_rating = avg_rating_data['avg_rating'] or 0
+
+    rating_breakdown = []
+    max_count = 0
+
+    for star in range(5, 0, -1):
+        count = all_reviews.filter(rating=star).count()
+        max_count = max(max_count, count)
+        rating_breakdown.append({
+            'stars': star,
+            'count': count,
+            'percentage': 0
+        })
+
+    # Calculate percentages for visual bars
+    for item in rating_breakdown:
+        if max_count > 0:
+            item['percentage'] = round((item['count'] / max_count * 100), 1)
+
+    # Check if current user has already reviewed
+    user_has_reviewed = False
+    if request.user.is_authenticated:
+        user_has_reviewed = Review.objects.filter(user=request.user).exists()
+
+    # Paginate reviews (show 10 per page)
+    paginator = Paginator(all_reviews, 10)
+    page_number = request.GET.get('page', 1)
+    reviews = paginator.get_page(page_number)
+
+    # Check if there are more pages
+    has_more_reviews = reviews.has_next()
+
+    context = {
+        'average_rating': average_rating,
+        'total_reviews': total_reviews,
+        'rating_breakdown': rating_breakdown,
+        'reviews': reviews,
+        'user_has_reviewed': user_has_reviewed,
+        'has_more_reviews': has_more_reviews,
+        'page_number': page_number,
+    }
+
+    return render(request, 'rating.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def submit_review(request):
 
     try:
-        course = Course.objects.get(id=course_id)
-    except Course.DoesNotExist:
-        messages.error(request, "הקורס לא נמצא.")
-        return redirect('dashboard')
+        existing_review = Review.objects.filter(user=request.user).first()
+        if existing_review:
+            messages.warning(request, "כבר הגשת ביקורת על האתר. תוכל לערוך אותה במקום להגיש חדשה.")
+            return redirect('rating_page')
 
-    # Check department access
-    if request.user.department != course.dept:
-        messages.error(request, "אין לך הרשאות לערוך פרטים של קורס זה.")
-        return redirect('dashboard')
+        rating = request.POST.get('rating')
+        message = request.POST.get('message', '').strip()
+
+        if not rating or not rating.isdigit() or int(rating) not in range(1, 6):
+            messages.error(request, "אנא בחר דירוג תקין (1-5 כוכבים).")
+            return redirect('rating_page')
+
+        review = Review.objects.create(
+            user=request.user,
+            rating=int(rating),
+            message=message if message else None,
+            created_at=timezone.now()
+        )
+
+        star_text = "כוכב" if int(rating) == 1 else "כוכבים"
+        messages.success(request, f"תודה על הביקורת! דירגת את האתר ב-{rating} {star_text}.")
+        logger.info(f"New review submitted by user {request.user.id}: {rating} stars")
+
+    except Exception as e:
+        logger.error(f"Error submitting review: {str(e)}")
+        messages.error(request, "אירעה שגיאה בשליחת הביקורת. אנא נסה שוב.")
+
+    return redirect('rating_page')
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def edit_review(request):
+
+    try:
+        review = Review.objects.get(user=request.user)
+    except Review.DoesNotExist:
+        messages.error(request, "לא נמצאה ביקורת קיימת לעריכה.")
+        return redirect('rating_page')
 
     if request.method == 'POST':
-        # Get selected lecturers
-        lecturer_ids = request.POST.getlist('lecturers')
+        rating = request.POST.get('rating')
+        message = request.POST.get('message', '').strip()
 
-        # Get all lecturers for this course
-        course_lecturers = User.objects.filter(courses=course, role=1)
+        if not rating or not rating.isdigit() or int(rating) not in range(1, 6):
+            messages.error(request, "אנא בחר דירוג תקין (1-5 כוכבים).")
+            return render(request, 'edit_review.html', {'review': review})
 
-        # Remove course from lecturers not in the selection
-        for lecturer in course_lecturers:
-            if str(lecturer.id) not in lecturer_ids:
-                lecturer.courses.remove(course)
+        review.rating = int(rating)
+        review.message = message if message else None
+        review.updated_at = timezone.now()
+        review.save()
 
-        # Add course to selected lecturers
-        if lecturer_ids:
-            lecturers = User.objects.filter(id__in=lecturer_ids, role=1, department=course.dept)
-            for lecturer in lecturers:
-                lecturer.courses.add(course)
+        messages.success(request, "הביקורת עודכנה בהצלחה!")
+        return redirect('rating_page')
 
-        messages.success(request, f"המרצים בקורס {course.name} עודכנו בהצלחה.")
+    context = {'review': review,'is_edit': True,}
+    return render(request, 'edit_review.html', context)
 
-    return redirect('course_requests', course_id=course_id)
 
-def course_requests(request, course_id):
-    """View requests for a specific course"""
-    if not request.user.is_authenticated or request.user.role not in [1, 2, 3]:
-        messages.error(request, "אין לך הרשאות לצפות בדף זה.")
-        return redirect('home')
+@login_required
+@require_http_methods(["POST"])
+def delete_review(request):
 
     try:
-        course = Course.objects.get(id=course_id)
-    except Course.DoesNotExist:
-        messages.error(request, "הקורס לא נמצא.")
-        return redirect('dashboard')
+        review = Review.objects.get(user=request.user)
+        review.delete()
+        messages.success(request, "הביקורת נמחקה בהצלחה.")
+        logger.info(f"Review deleted by user {request.user.id}")
+    except Review.DoesNotExist:
+        messages.error(request, "לא נמצאה ביקורת למחיקה.")
+    except Exception as e:
+        logger.error(f"Error deleting review: {str(e)}")
+        messages.error(request, "אירעה שגיאה במחיקת הביקורת.")
 
-    # Check department access
-    if request.user.role == 1 and request.user.department != course.department:
-        messages.error(request, "אין לך הרשאות לצפות בבקשות של קורס זה.")
-        return redirect('dashboard')
+    return redirect('rating_page')
 
-    requests = Request.objects.filter(course=course).order_by('-created')
 
-    return render(request, 'course_requests.html', {'course': course,'requests': requests})
-'''
+@require_http_methods(["GET"])
+def get_rating_stats(request):
 
+    all_reviews = Review.objects.all()
+
+    if not all_reviews.exists():
+        return JsonResponse({'average_rating': 0,'total_reviews': 0, 'rating_distribution': [0, 0, 0, 0, 0]})
+
+    avg_rating = all_reviews.aggregate(avg_rating=Avg('rating'))['avg_rating']
+    total_reviews = all_reviews.count()
+
+    distribution = []
+    for star in range(1, 6):
+        count = all_reviews.filter(rating=star).count()
+        distribution.append(count)
+
+    return JsonResponse({'average_rating': round(avg_rating, 2),'total_reviews': total_reviews,
+        'rating_distribution': distribution, 'last_updated': timezone.now().isoformat()})

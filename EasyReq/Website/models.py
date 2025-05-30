@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.utils import timezone
+from datetime import timedelta
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Department(models.Model):
     id = models.AutoField(primary_key=True)
@@ -18,6 +21,7 @@ class Course(models.Model):
     name = models.CharField(max_length=50)
     year = models.SmallIntegerField(default=1)
     dept = models.ForeignKey(Department, on_delete=models.CASCADE)
+    lecturers = models.ManyToManyField('User', related_name='taught_courses', limit_choices_to={'role': 1}, blank=True)
 
     def __str__(self):
         return self.name
@@ -46,6 +50,7 @@ class User(AbstractUser):
     role = models.SmallIntegerField(default=0, choices=roles)
     courses = models.ManyToManyField("Course", blank=True)
     year = models.SmallIntegerField(default=0)
+
 
     def save(self, *args, **kwargs):
         if self.role == 1 and self._state.adding:
@@ -144,10 +149,45 @@ class Request(models.Model):
         elif pipeline_status in [4, 5]:  # Resolved
             notification_type = 'resolved'
 
-        send_request_notification(self, notification_type)
+        #send_request_notification(self, notification_type)
 
     def get_current_status_display(self):
         return dict(self.PIPELINE_STATUSES)[self.pipeline_status]
+
+    def get_remaining_days_display(self):
+        if self.status != 0:
+            return "טופל"
+
+        from django.utils import timezone
+        sla_days_map = {
+            0: 7,
+            1: 3,
+            2: 2,
+            3: 1,
+        }
+
+        allowed_days = sla_days_map.get(self.priority, 2)
+        deadline = self.created + timedelta(days=allowed_days)
+        remaining_days = (deadline - timezone.now()).days
+
+        if remaining_days >= 3:
+            return f"{remaining_days} ימים"
+        elif remaining_days == 2:
+            return "יומיים"
+        elif remaining_days == 1:
+            return "יום"
+        elif remaining_days == 0:
+            return "היום האחרון"
+        else:
+            overdue = abs(remaining_days)
+            if overdue == 1:
+                return '<span class="text-danger">באיחור של יום</span>'
+            elif overdue == 2:
+                return '<span class="text-danger">באיחור של יומיים</span>'
+            else:
+                return f'<span class="text-danger">באיחור של {overdue} ימים</span>'
+
+
 
     def get_sla_status(self):
         if self.status != 0:  # If not pending, SLA doesn't apply
@@ -173,6 +213,7 @@ class Request(models.Model):
             return "בסיכון"
         else:
             return "בזמן"
+
 
     def auto_assign(self):
         self.viewers.clear()
@@ -250,3 +291,113 @@ class RequestStatus(models.Model):
 
     def __str__(self):
         return f"{self.get_status_display()} - {self.timestamp.strftime('%d/%m/%Y %H:%M')}"
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.message[:30]}{'...' if len(self.message) > 30 else ''}"
+
+"""
+class Review(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    message = models.TextField()
+
+    def __str__(self):
+        return f"{self.user.username} - {self.rating}"
+
+
+"""
+class Review(models.Model):
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name="משתמש",
+        related_name='reviews'
+    )
+
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="דירוג",
+        help_text="דירוג מ-1 עד 5 כוכבים"
+    )
+
+    message = models.TextField(
+        blank=True,
+        null=True,
+        max_length=1000,
+        verbose_name="הודעה",
+        help_text="הודעה אופציונלית מהמשתמש"
+    )
+
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="תאריך יצירה"
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="תאריך עדכון"
+    )
+
+    is_hidden = models.BooleanField(
+        default=False,
+        verbose_name="מוסתר",
+        help_text="האם הביקורת מוסתרת מהציבור"
+    )
+
+    class Meta:
+        verbose_name = "ביקורת"
+        verbose_name_plural = "ביקורות"
+        ordering = ['-created_at']
+
+        # Ensure one review per user
+        unique_together = ['user']
+
+        indexes = [
+            models.Index(fields=['rating']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['is_hidden']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.rating} כוכבים"
+
+    def get_star_display(self):
+        return "★" * self.rating + "☆" * (5 - self.rating)
+
+    def is_positive(self):
+        return self.rating >= 4
+
+    def is_negative(self):
+        return self.rating <= 2
+
+    @classmethod
+    def get_average_rating(cls):
+        from django.db.models import Avg
+        result = cls.objects.aggregate(avg_rating=Avg('rating'))
+        return round(result['avg_rating'] or 0, 2)
+
+    @classmethod
+    def get_rating_distribution(cls):
+        from django.db.models import Count
+        distribution = {}
+        for i in range(1, 6):
+            distribution[i] = cls.objects.filter(rating=i).count()
+        return distribution
+
+    @classmethod
+    def get_satisfaction_rate(cls):
+        total = cls.objects.count()
+        if total == 0:
+            return 0
+
+        satisfied = cls.objects.filter(rating__gte=4).count()
+        return round((satisfied / total) * 100, 1)
+    

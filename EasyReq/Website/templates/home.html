@@ -1,25 +1,424 @@
 {% extends 'base.html' %}
 {% load static %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+{% block title %}בית | EasyReq{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
-<div class="wrapper">
-  <h1>בית</h1>
-    {% if user.is_authenticated %}
-      <h4>! {{ user.username }},שלום</h4>
-      <div class="bottom-links">
-        <a href="{% url 'profile' %}" >לפרופיל שלי</a>
-        <br>
-        <a href="{% url 'logout' %}" >התנתק</a>
-      </div>
-    {% else %}
-      <h4>שלום, אורח</h4>
-      <div class="bottom-links">
-        <a href="{% url 'login' %}" > התחברות </a>
-        <br>
-        <a href="{% url 'register' %}" > הרשמה </a>
-      </div>
-    {% endif %}
+<style>
+  html, body {
+  height: 100%;
+  margin: 0; padding: 0;
+  background-color: #eaf0fb;
+  direction: rtl;
+  font-family: 'Calibri', sans-serif;
+  display: flex; justify-content: center; align-items: center;
+  /* מבטל גלילה כללית */
+  overflow: hidden;
+}
+
+
+  .home-card {
+    width: 96%; max-width: 1400px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(46,70,122,0.3);
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    padding: 2rem;
+    margin: 2rem 0;
+  }
+
+  /* ימין: ברכה + עיגול פרופיל */
+  .home-welcome {
+    width: 220px; height: 220px;
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 12px 40px rgba(46,70,122,0.3);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    margin: auto;
+  }
+  .home-welcome .welcome-text {
+    font-size: 1.3rem; color: #2b3d8f; font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  .home-profile-pic-wrapper {
+    width: 100px; height: 100px;
+  }
+  .home-profile-pic,
+  .home-initials-circle {
+    width: 100%; height: 100%;
+    border-radius: 50%; object-fit: cover;
+    border: 2px solid #4c70f0;
+  }
+  .home-initials-circle {
+    background-color: rgba(76,112,240,0.2);
+    color: #4c70f0; font-size: 2.5rem; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* שמאל: תזכורות + טבלת בקשות */
+  .home-content {
+    display: flex; flex-direction: column;
+  }
+  .home-notifications {
+    margin-bottom: 2rem;
+  }
+  .home-notifications h3 {
+    margin: 0 0 1rem; color: #2b3d8f; font-size: 1.25rem;
+    text-align: right;
+  }
+  .home-notifications ul {
+    list-style: none; padding: 0; margin: 0;
+    max-height: 200px; overflow-y: auto;
+  }
+  .home-notifications li {
+    background: #f0f4ff; border-radius: 8px;
+    padding: 0.75rem; margin-bottom: 0.75rem;
+    text-align: right; border-left: 4px solid #4c70f0;
+  }
+  .home-notifications li strong { color: #3454d1; }
+  .home-notifications li small {
+    display: block; color: #666; margin: 0.5rem 0;
+  }
+  .home-notifications li.empty {
+    background: transparent; border: none; color: #999;
+  }
+
+  .home-requests {
+    overflow-x: auto;
+  }
+  .home-requests table {
+    width: 100%; border-collapse: collapse; text-align: right;
+  }
+  .home-requests th, .home-requests td {
+    padding: 0.5rem; border-bottom: 1px solid #ddd;
+  }
+  .home-requests th {
+    background: #dce4ff; color: #2b3d8f;
+  }
+  .home-requests tr:nth-child(even) {
+    background: #f9fbff;
+  }
+  .home-requests td.status-pending { color: #dcd767; }
+  .home-requests td.status-approved { color: #39a653; }
+  .home-requests td.status-rejected { color: #e6959c; }
+
+  @media (max-width: 900px) {
+    .home-card { grid-template-columns: 1fr; padding: 1rem; }
+  }
+  .fullscreen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: flex-start;    /* מיישר למעלה */
+    justify-content: center;
+    padding-top: 1rem;          /* רווח minimal למעלה */
+    box-sizing: border-box;
+  }
+
+  .container-box {
+    max-width: 560px;
+    width: 90%;
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 12px 40px rgba(46,70,122,0.3);
+    text-align: center;
+    margin: 1rem auto 0;
+  }
+
+  .hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 4rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    flex-wrap: nowrap;
+  }
+
+  .hero-icon-wrapper {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .hero-icon {
+    font-size: 48px;
+    color: #4c70f0;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-content {
+    flex: 1;
+    max-width: 600px;
+    text-align: right;
+    padding: 0 0.5rem;
+  }
+
+  .hero-image {
+    flex: 1;
+    max-width: 600px;
+    padding: 0 0.5rem;
+    text-align: center;
+  }
+
+  .hero-title {
+    position: relative;
+    left: -200px;
+    top: -50px;               /* מוריד את הכותרת מעט למטה */
+    font-size: 5rem;
+    font-weight: bold;
+    color: #4c70f0;
+    text-align: center;
+    margin-bottom: -1rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.3rem;
+    color: rgba(47, 103, 227, 0.7);
+    margin-bottom: 1.5rem;
+    line-height: 1.8;
+  }
+
+.hero-buttons a.btn-primary,
+.hero-buttons a.btn-secondary {
+  padding: 1rem 2.5rem;
+  font-size: 1.25rem;
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.75rem 1.8rem;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 2rem;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.3s;
+  }
+  .btn-primary {
+    background-color: #4c70f0;
+    color: white;
+  }
+  .btn-primary:hover {
+    background-color: #3454d1;
+  }
+  .btn-secondary {
+    background-color: transparent;
+    border: 2px solid #4c70f0;
+    color: #4c70f0;
+  }
+  .btn-secondary:hover {
+    background-color: #e6ebff;
+  }
+
+  .hero-image img {
+    width: 170%;
+    max-width: none;
+    height: auto;
+    transform: translate(5%, -20%) translateY(10%); /* מוריד למטה */
+  }
+
+  @media (max-width: 768px) {
+    .hero {
+      flex-direction: column-reverse;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    .hero-content {
+      text-align: center;
+    }
+    .hero-buttons {
+      justify-content: center;
+    }
+  }
+
+  .title-easy { color: #2b3d8f; }
+  .title-req { color: #4c70f0; }
+
+  .with-icon {
+    position: relative;
+    display: inline-block;
+    text-align: center;
+    width: 100%;
+  }
+
+  .hero-title-icon {
+    position: absolute;
+    top: -15px;
+    left: 25%;
+    transform: translateX(-50%) rotate(-20deg);
+    font-size: 3rem;
+    color: #4c70f0;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+  }
+</style>
+
+{% if user.is_authenticated %}
+  <div class="home-card">
+
+    <!-- ימין: ברכה ותמונה -->
+    <div class="home-welcome">
+      <div class="welcome-text">שלום, {{ user.get_full_name }}!</div>
+      <div class="home-profile-pic-wrapper">
+        {% if user.profile_pic and user.profile_pic.url and "profile.png" not in user.profile_pic.name %}
+          <img src="{{ user.profile_pic.url }}" alt="Profile" class="home-profile-pic">
+        {% else %}
+        <div class="home-initials-circle"
+     id="initials-circle"
+     data-username="{{ user.username }}">
+  {{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}
 </div>
+
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- שמאל: תזכורות וטבלה -->
+    <div class="home-content">
+      <div class="home-notifications">
+        <h3>תזכורות והתראות</h3>
+        <ul>
+          {% for note in notifications %}
+            <li>
+              <strong>{{ note.title }}</strong>
+              <small>{{ note.created|date:"d/m/Y H:i" }}</small>
+              <div>{{ note.message }}</div>
+            </li>
+          {% empty %}
+            <li class="empty">אין תזכורות או התראות</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="home-requests">
+        <h3 style="text-align:right; color:#2b3d8f; margin-bottom:0.5rem;">בקשות אחרונות</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>כותרת</th>
+              <th>מועד הגשה</th>
+              <th>סטטוס</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for req in recent_requests %}
+              <tr>
+                <td>{{ req.get_title_display|truncatechars:30 }}</td>
+                <td>{{ req.created|date:"d/m/Y" }}</td>
+                <td class="
+                    {% if req.status == 0 %}status-pending{% endif %}
+                    {% if req.status == 1 %}status-approved{% endif %}
+                    {% if req.status == 2 %}status-rejected{% endif %}
+                  ">
+                  {{ req.get_status_display }}
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" style="text-align:center; padding:1rem;">אין בקשות להצגה.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+ {% else %}
+<section class="hero">
+<div class="hero-content">
+
+
+  <h2 class="hero-subtitle-title">מערכת לניהול בקשות סטודנט</h2>
+
+    <p class="hero-subtitle" style="color: #000;">
+      ברוכים הבאים ל-EasyReq, המערכת הרשמית של מכללת SCE לניהול בקשות אקדמיות עבור סטודנטים, מרצים וצוותי מזכירות.
+      המערכת פותחה כדי לייעל את תהליך הגשת הבקשות, לחסוך בזמן ולשפר את חוויית השירות האקדמי.
+    </p>
+
+    <!-- רשימת יכולות עם עיגולים כחולים מעוצבים -->
+    <div style="margin-top: 2.5rem;">
+      <div style="display: flex; align-items: flex-start; margin-bottom: 2rem;">
+        <div style="width: 16px; height: 16px; background-color: #4c70f0; border-radius: 50%; margin-left: 16px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          הגשת סוגי בקשות אקדמיות ישירות דרך המערכת: שינוי מערכת שעות, בקשות למועדים מיוחדים, מילואים ועוד.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          מעקב אחר סטטוס הבקשה – בכל שלב: נשלחה, בטיפול, אושרה או נדחתה – כולל עדכונים שוטפים.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          טיפול מקצועי של מזכירות המחלקה דרך ממשק ניהולי חכם – כולל סינון, תגובות מהירות ודוחות.
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; margin-bottom: 1.5rem;">
+        <div style="width: 14px; height: 14px; background-color: #4c70f0; border-radius: 50%; margin-left: 12px; margin-top: 7px;"></div>
+        <p style="margin: 0; color: #000; font-size: 1.1rem;">
+          מרצים יכולים לצפות בבקשות רלוונטיות ולהגיב ישירות דרך המערכת.
+        </p>
+      </div>
+
+
+    </div>
+
+    <div class="hero-buttons" style="margin-top: 3rem;">
+      <a href="{% url 'login' %}" class="btn-primary">התחברות</a>
+      <a href="{% url 'register' %}" class="btn-secondary">הרשמה</a>
+    </div>
+  </div>
+
+  <div class="hero-image">
+    <h1 class="hero-title with-icon">
+  <i class="fas fa-graduation-cap hero-title-icon"></i>
+  <span class="title-easy">Easy</span><span class="title-req">Req</span>
+</h1>
+    <img src="{% static 'images/homePage.png' %}" alt="איור מערכת EasyReq">
+  </div>
+</section>
+  {% endif %}
+<script>
+// פונקציה שממפה מחרוזת ל־0–360
+function hashToHue(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++){
+    h = (h*31 + str.charCodeAt(i)) % 360;
+  }
+  return h;
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const circle = document.getElementById('initials-circle');
+  if(circle){
+    const hue = hashToHue(circle.dataset.username||'');
+    // רקע כחול שקוף ובעוצמה לפי פרופיל
+    circle.style.backgroundColor = `hsl(${hue}, 60%, 50%)`;
+    circle.style.color = '#fff';
+  }
+});
+</script>
 
 {% endblock %}

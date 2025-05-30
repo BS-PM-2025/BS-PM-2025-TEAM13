@@ -75,20 +75,178 @@ class User(AbstractUser):
 
 class Request(models.Model):
     STATUSES = (
-        (0, 'Pending'),
-        (1, 'Approved'),
-        (2, 'Rejected')
+        (0, 'ממתין'),
+        (1, 'אושר'),
+        (2, 'נדחה')
     )
-    student = models.ForeignKey(User, on_delete=models.CASCADE,limit_choices_to={'role': 0})
+
+    PIPELINE_STATUSES = (
+        (0, 'נשלח'),
+        (1, 'בבדיקה'),
+        (2, 'בטיפול'),
+        (3, 'בהמתנה למסמכים נוספים'),
+        (4, 'טופל - אושר'),
+        (5, 'טופל - נדחה'),
+        (6, 'בהמתנה')
+    )
+
+    PRIORITY_LEVELS = (
+        (0, 'נמוכה'),
+        (1, 'בינונית'),
+        (2, 'גבוהה'),
+        (3, 'דחופה')
+    )
+
+    TITLES = (
+        (0, 'הגשת אישורים'),
+        (1, 'בקשה למועד מיוחד'),
+        (2, 'שקלול עבודות בית בציון הסופי'),
+        (3, 'דחיית הגשת עבודה'),
+        (4, 'שחרור מחובת הרשמה'),
+        (5, 'בקשה לפטור מקורס'),
+        (6, 'ערעור על ציון'),
+        (7, 'בקשה לפטור מעבודת הגשה'),
+        (8, 'בקשה לפטור מדרישת קדם'),
+        (9, 'בקשה לעזרה מיוחדת - דיקאנט'),
+        (10, 'אחר')
+    )
+
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 0},related_name='submitted_requests')
     dept = models.ForeignKey(Department, on_delete=models.CASCADE)
-    title = models.CharField(max_length=20)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
+    title = models.SmallIntegerField(default=10, choices=TITLES)
     description = models.TextField()
     status = models.SmallIntegerField(default=0, choices=STATUSES)
+    pipeline_status = models.SmallIntegerField(default=0, choices=PIPELINE_STATUSES)
+    priority = models.SmallIntegerField(default=1, choices=PRIORITY_LEVELS)
     created = models.DateTimeField(auto_now_add=True)
-    # sla field - function to calc
+    modified = models.DateTimeField(auto_now=True)
+    assigned_to = models.ManyToManyField(User, related_name='assigned_requests',limit_choices_to={'role__in': [1, 2, 3]},
+                                         blank=True)
+    viewers = models.ManyToManyField(User, related_name='viewable_requests', blank=True)
+    resolved_date = models.DateTimeField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True)
+    attachments = models.FileField(upload_to='request_attachments/', null=True, blank=True)
+
+    def update_status(self, pipeline_status, user, notes=''):
+        self.pipeline_status = pipeline_status
+        if pipeline_status in [4, 5]:
+            self.status = 1 if pipeline_status == 4 else 2  # 1=Approved, 2=Rejected
+            self.resolved_date = timezone.now()
+        else:
+            self.status = 0  # Pending
+
+        self.save()
+        RequestStatus.objects.create(request=self,status=pipeline_status,updated_by=user,notes=notes)
+        notification_type = 'updated'
+        if pipeline_status == 3:  # Pending Additional Information
+            notification_type = 'info_requested'
+        elif pipeline_status in [4, 5]:  # Resolved
+            notification_type = 'resolved'
+
+        send_request_notification(self, notification_type)
+
+    def get_current_status_display(self):
+        return dict(self.PIPELINE_STATUSES)[self.pipeline_status]
+
+    def get_sla_status(self):
+        if self.status != 0:  # If not pending, SLA doesn't apply
+            return "Resolved"
+
+        # Get elapsed time
+        from django.utils import timezone
+        elapsed = (timezone.now() - self.created).total_seconds() / 3600
+
+        # Define SLA thresholds based on priority (in hours)
+        sla_thresholds = {
+            0: 168,  # Low: 7 days
+            1: 72,  # Medium: 3 days
+            2: 48,  # High: 2 day
+            3: 24,  # Urgent: 1 hours
+        }
+
+        threshold = sla_thresholds.get(self.priority, 48)
+
+        if elapsed > threshold:
+            return "בחריגה"
+        elif elapsed > (threshold * 0.75):
+            return "בסיכון"
+        else:
+            return "בזמן"
+
+    def auto_assign(self):
+        self.viewers.clear()
+        if not self.pk:
+            self.save()
+        self.assigned_to.clear()
+        staff_users = User.objects.filter(role=2, department=self.dept)  # Staff
+        self.viewers.add(*staff_users)
+
+        assigned_users = []
+        for user in staff_users:
+            assigned_users.append(user)
+            self.assigned_to.add(user)
+
+        title_num = self.title
+
+        if title_num in [0, 9]:  # Deanery
+            deanery_users = User.objects.filter(role=3)
+            if deanery_users.exists():
+                for deanery_user in deanery_users:
+                    self.assigned_to.add(deanery_user)
+                    assigned_users.append(deanery_user)
+                self.viewers.add(*deanery_users)
+                print(f"Assigned to deanery: {list(deanery_users)}")
+
+        elif title_num in [3, 6, 7] and self.course:  # Lecturer
+            lecturer_users = User.objects.filter(role=1,department=self.dept,courses=self.course)
+            if lecturer_users.exists():
+                for lecturer in lecturer_users:
+                    self.assigned_to.add(lecturer)
+                    assigned_users.append(lecturer)
+                self.viewers.add(*lecturer_users)
+                print(f"Assigned to lecturers: {list(lecturer_users)}")
+
+        if not assigned_users:
+            print("No suitable assignee found")
+
+        return assigned_users
+
+class RequestComment(models.Model):
+    request = models.ForeignKey(Request, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    comment = models.TextField()
+    created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'Website'
-        verbose_name = 'Request'
-        verbose_name_plural = 'Requests'
+        verbose_name = 'Request Comment'
+        verbose_name_plural = 'Request Comments'
+        ordering = ['created']  # Chronological order
 
+
+class RequestStatus(models.Model):
+    STATUS_CHOICES = (
+        (0, 'נשלח'),
+        (1, 'בבדיקה'),
+        (2, 'בטיפול'),
+        (3, 'בהמתנה למסמכים נוספים'),
+        (4, 'טופל - אושר'),
+        (5, 'טופל - נדחה'),
+        (6, 'בהמתנה')
+    )
+
+    request = models.ForeignKey('Request', on_delete=models.CASCADE, related_name='status_updates')
+    status = models.SmallIntegerField(choices=STATUS_CHOICES)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    notes = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'Website'
+        verbose_name = 'Request Status Update'
+        verbose_name_plural = 'Request Status Updates'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.get_status_display()} - {self.timestamp.strftime('%d/%m/%Y %H:%M')}"

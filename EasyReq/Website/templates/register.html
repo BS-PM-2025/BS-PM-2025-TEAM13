@@ -5,8 +5,6 @@
 
 {% block content %}
 
-
-
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -131,7 +129,8 @@
                 <p style="color: red;">{{ error }}</p>
             {% endfor %}
         </div>
-        <select name="department" class="select-box" required>
+
+        <select name="department" id="department"class="select-box" required>
             <option value="" disabled selected>מחלקה</option>
             <option value="1">הנדסת תוכנה</option>
             <option value="2">הנדסת חשמל</option>
@@ -143,6 +142,17 @@
             <option value="8">תקשורת חזותית</option>
             <option value="9">הנדסת מכונות</option>
         </select>
+        <!-- Course selection section (only shown for lecturers) -->
+        <div id="courses-section" style="display: none;">
+            <div class="mb-4">
+                <label class="form-label fw-bold">קורסים שאני מלמד</label>
+                <div id="courses-container" class="mt-2">
+                    <!-- Courses will be loaded here via JavaScript -->
+                    <div class="text-muted">בחר מחלקה כדי לראות את הקורסים הזמינים</div>
+                </div>
+                <div class="form-text">בחר את הקורסים שאתה מלמד</div>
+            </div>
+        </div>
         <button type="submit" class="btn">הירשם</button>
     </form>
     <div class="bottom-links">
@@ -180,6 +190,77 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleYearField();
 });
 </script>
+<script>
+    // Wait for document to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('role-select');
+        const departmentSelect = document.getElementById('department');
+        const coursesSection = document.getElementById('courses-section');
 
+        // Initially hide courses section
+        coursesSection.style.display = 'none';
+
+        // Show courses when role is selected as lecturer
+        roleSelect.addEventListener('change', function() {
+            if (this.value == '1') { // Lecturer
+                coursesSection.style.display = 'block';
+                // Load courses for the currently selected department
+                if (departmentSelect.value) {
+                    loadCourses(departmentSelect.value);
+                }
+            } else {
+                coursesSection.style.display = 'none';
+            }
+        });
+
+        // Load courses when department changes
+        departmentSelect.addEventListener('change', function() {
+            if (roleSelect.value == '1') { // Only if lecturer is selected
+                loadCourses(this.value);
+            }
+        });
+
+        // Function to load courses via AJAX
+        function loadCourses(departmentId) {
+            fetch(`/get-courses/?department=${departmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update the courses checkboxes
+                    const coursesContainer = document.getElementById('courses-container');
+                    coursesContainer.innerHTML = '';
+
+                    if (data.courses.length === 0) {
+                        coursesContainer.innerHTML = '<p>אין קורסים זמינים במחלקה זו.</p>';
+                        return;
+                    }
+
+                    // Create checkboxes for each course
+                    data.courses.forEach(course => {
+                        const courseDiv = document.createElement('div');
+                        courseDiv.className = 'form-check';
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'form-check-input';
+                        checkbox.name = 'courses';
+                        checkbox.id = `course-${course.id}`;
+                        checkbox.value = course.id;
+
+                        const label = document.createElement('label');
+                        label.className = 'form-check-label';
+                        label.htmlFor = `course-${course.id}`;
+                        label.textContent = course.name;
+
+                        courseDiv.appendChild(checkbox);
+                        courseDiv.appendChild(label);
+                        coursesContainer.appendChild(courseDiv);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading courses:', error);
+                });
+        }
+    });
+</script>
 <script src="{% static 'js/password_validation.js' %}"></script>
 {% endblock %}

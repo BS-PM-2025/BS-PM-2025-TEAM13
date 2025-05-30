@@ -1,0 +1,530 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ניהול משתמשים | EasyReq{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://unpkg.com/tablesort@5.2.1/dist/tablesort.min.js"></script>
+
+<style>
+  body {
+    background-color: #eaf0fb;
+    font-family: 'Calibri', sans-serif;
+    direction: rtl;
+  }
+
+  .container-box {
+    max-width: 1200px;
+    margin: 60px auto;
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 12px 40px rgba(46, 70, 122, 0.7);
+  }
+
+  .section-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2d6cdf;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 40px;
+    background: #fff;
+  }
+
+  thead th {
+    background-color: #f2f4f8;
+    border: 1px solid #ccc;
+    padding: 12px;
+    cursor: pointer;
+  }
+
+  tbody td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  .badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    display: inline-block;
+  }
+
+  .badge-pending { background-color: #ffc107; color: #212529; }
+  .badge-active { background-color: #28a745; color: #fff; }
+
+  .btn-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+
+  .btn-link:hover i { opacity: 0.7; }
+
+  .text-danger { color: #dc3545; }
+  .text-warning { color: #fd7e14; }
+  .text-success { color: #198754; }
+
+  /* אייקונים גדולים יותר לטבלת המרצים הממתינים */
+  .pending-lecturers-table .btn-link i {
+    font-size: 18px; /* גודל גדול יותר */
+  }
+
+  /* סטייל עבור מחיקה קבוצתית */
+.bulk-actions {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #dee2e6;
+  display: none;
+}
+
+.bulk-actions.show {
+  display: block;
+}
+
+.bulk-delete-btn, .bulk-deactivate-btn {
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: 10px;
+}
+
+.bulk-delete-btn {
+  background-color: #dc3545;
+}
+
+.bulk-delete-btn:hover {
+  background-color: #c82333;
+}
+
+.bulk-deactivate-btn {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.bulk-deactivate-btn:hover {
+  background-color: #e0a800;
+}
+
+.bulk-delete-btn:disabled, .bulk-deactivate-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+input[type="checkbox"] {
+  cursor: pointer;
+  transform: scale(1.2);
+}
+
+.selected-count {
+  font-weight: bold;
+  color: #2d6cdf;
+}
+
+.checkbox-cell {
+  width: 40px;
+  text-align: center;
+  display: none;
+}
+
+.checkbox-cell.show {
+  display: table-cell;
+}
+
+.selection-mode-active .clickable-row {
+  cursor: default;
+}
+
+.selection-mode-active .clickable-row td:not(.checkbox-cell) {
+  pointer-events: none;
+}
+
+.toggle-selection-btn {
+  transition: all 0.3s ease;
+  margin-bottom: 15px;
+}
+
+.toggle-selection-btn.active {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+</style>
+
+<div class="container-box">
+  <h2 class="section-title">ניהול משתמשים במחלקה</h2>
+
+  <div class="section-title">סטודנטים</div>
+  <button type="button" class="btn btn-outline-primary btn-sm toggle-selection-btn" id="toggleStudentSelection" onclick="toggleStudentSelectionMode()">
+  <i class="fas fa-check-square me-1"></i> בחר סטודנטים
+</button>
+
+<div class="bulk-actions" id="studentBulkActions">
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <span>נבחרו: <span class="selected-count" id="studentSelectedCount">0</span> סטודנטים</span>
+    <button type="button" class="bulk-delete-btn" id="studentBulkDeleteBtn" onclick="bulkDeleteStudents()">
+      <i class="fas fa-trash me-1"></i> מחק נבחרים
+    </button>
+  </div>
+</div>
+
+<form method="post" action="{% url 'bulk_delete_students' %}" id="studentsForm">
+  {% csrf_token %}
+  <table id="students-table">
+    <thead>
+      <tr>
+        <th class="checkbox-cell">
+          <input type="checkbox" id="selectAllStudents" onchange="toggleAllStudentSelection()">
+        </th>
+        <th>שם מלא</th>
+        <th>שנה</th>
+        <th>אימייל</th>
+        <th>סטטוס</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+        {% if student.username != "admin" %}
+        <tr class="clickable-row">
+          <td class="checkbox-cell" onclick="event.stopPropagation();">
+            <input type="checkbox" name="selected_students" value="{{ student.id }}" class="student-checkbox" onchange="updateStudentBulkActions()">
+          </td>
+          <td onclick="window.location.href='{% url 'edit_student_form' student.id %}'">{{ student.get_full_name }}</td>
+          <td onclick="window.location.href='{% url 'edit_student_form' student.id %}'">
+            {% if student.year == 1 %}
+              א'
+            {% elif student.year == 2 %}
+              ב'
+            {% elif student.year == 3 %}
+              ג'
+            {% elif student.year == 4 %}
+              ד'
+            {% else %}
+              {{ student.year }}
+            {% endif %}
+          </td>
+          <td onclick="window.location.href='{% url 'edit_student_form' student.id %}'">{{ student.email }}</td>
+          <td onclick="window.location.href='{% url 'edit_student_form' student.id %}'">
+            {% if student.is_active %}
+              <span class="badge badge-active">פעיל</span>
+            {% else %}
+              <span class="badge badge-pending">ממתין להפעלה</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</form>
+  <div class="section-title">מרצים פעילים</div>
+  <button type="button" class="btn btn-outline-primary btn-sm toggle-selection-btn" id="toggleLecturerSelection" onclick="toggleLecturerSelectionMode()">
+  <i class="fas fa-check-square me-1"></i> בחר מרצים
+</button>
+
+<div class="bulk-actions" id="lecturerBulkActions">
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <span>נבחרו: <span class="selected-count" id="lecturerSelectedCount">0</span> מרצים</span>
+    <button type="button" class="bulk-deactivate-btn" id="lecturerBulkDeactivateBtn" onclick="bulkDeactivateLecturers()">
+      <i class="fas fa-user-slash me-1"></i> השבת נבחרים
+    </button>
+  </div>
+</div>
+
+<form method="post" action="{% url 'bulk_deactivate_lecturers' %}" id="lecturersForm">
+  {% csrf_token %}
+  <table id="lecturers-table">
+  <thead>
+    <tr>
+      <th class="checkbox-cell">
+        <input type="checkbox" id="selectAllLecturers" onchange="toggleAllLecturerSelection()">
+      </th>
+      <th>שם מלא</th>
+      <th>אימייל</th>
+      <th>סטטוס</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for lecturer in active_lecturers %}
+      {% if lecturer.username != "admin" %}
+      <tr>
+        <td class="checkbox-cell" onclick="event.stopPropagation();">
+          <input type="checkbox" name="selected_lecturers" value="{{ lecturer.id }}" class="lecturer-checkbox" onchange="updateLecturerBulkActions()">
+        </td>
+        <td>{{ lecturer.get_full_name }}</td>
+        <td>{{ lecturer.email }}</td>
+        <td><span class="badge badge-active">מאושר</span></td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+</form>
+
+  <div class="section-title">מרצים ממתינים לאישור</div>
+  <table class="pending-lecturers-table">
+    <thead>
+      <tr>
+        <th>שם מלא</th>
+        <th>אימייל</th>
+        <th>סטטוס</th>
+        <th>פעולות</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lecturer in pending_lecturers %}
+        {% if lecturer.username != "admin" %}
+        <tr>
+          <td>{{ lecturer.get_full_name }}</td>
+          <td>{{ lecturer.email }}</td>
+          <td><span class="badge badge-pending">בהמתנה</span></td>
+          <td>
+            <form method="post" action="{% url 'approve_lecturer' %}" style="display:inline">
+              {% csrf_token %}
+              <input type="hidden" name="user_id" value="{{ lecturer.id }}">
+              <input type="hidden" name="action" value="approve">
+              <button type="submit" class="btn-link" title="אשר">
+                <i class="fas fa-check-circle text-success"></i>
+              </button>
+            </form>
+            <form method="post" action="{% url 'approve_lecturer' %}" style="display:inline" onsubmit="return confirm('לדחות ולמחוק את המרצה?');">
+              {% csrf_token %}
+              <input type="hidden" name="user_id" value="{{ lecturer.id }}">
+              <input type="hidden" name="action" value="reject">
+              <button type="submit" class="btn-link" title="דחה">
+                <i class="fas fa-times-circle text-danger"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll("table").forEach(table => new Tablesort(table));
+  });
+
+
+let studentSelectionMode = false;
+function toggleStudentSelectionMode() {
+  const toggleBtn = document.getElementById('toggleStudentSelection');
+  const checkboxCells = document.querySelectorAll('#students-table .checkbox-cell');
+  const table = document.getElementById('students-table');
+  const bulkActions = document.getElementById('studentBulkActions');
+
+  studentSelectionMode = !studentSelectionMode;
+
+  if (studentSelectionMode) {
+    checkboxCells.forEach(cell => cell.classList.add('show'));
+    table.classList.add('selection-mode-active');
+    toggleBtn.classList.add('active');
+    updateStudentBulkActions(); // כדי להציג את כפתור "בטל בחירה" רק אם יש סימונים
+  } else {
+    clearStudentSelection(); // ניקוי כל הבחירה
+    checkboxCells.forEach(cell => cell.classList.remove('show'));
+    table.classList.remove('selection-mode-active');
+    toggleBtn.classList.remove('active');
+    toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר סטודנטים';
+    bulkActions.classList.remove('show'); // הסתרת "מחק נבחרים" וכמות
+  }
+}
+
+
+function toggleAllStudentSelection() {
+  if (!studentSelectionMode) return;
+  const selectAll = document.getElementById('selectAllStudents');
+  const checkboxes = document.querySelectorAll('.student-checkbox');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = selectAll.checked;
+  });
+  
+  updateStudentBulkActions();
+}
+
+function updateStudentBulkActions() {
+  if (!studentSelectionMode) return;
+  const checkboxes = document.querySelectorAll('.student-checkbox');
+  const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+  const bulkActions = document.getElementById('studentBulkActions');
+  const selectedCount = document.getElementById('studentSelectedCount');
+  const bulkDeleteBtn = document.getElementById('studentBulkDeleteBtn');
+  const selectAll = document.getElementById('selectAllStudents');
+  const toggleBtn = document.getElementById('toggleStudentSelection');
+
+  if (checkedBoxes.length > 0) {
+    bulkActions.classList.add('show');
+    selectedCount.textContent = checkedBoxes.length;
+    bulkDeleteBtn.disabled = false;
+    toggleBtn.innerHTML = '<i class="fas fa-times me-1"></i> בטל בחירה';
+  } else {
+    bulkActions.classList.remove('show');
+    bulkDeleteBtn.disabled = true;
+    toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר סטודנטים';
+  }
+
+  selectAll.checked = checkedBoxes.length === checkboxes.length && checkboxes.length > 0;
+  selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+}
+
+
+function clearStudentSelection() {
+  const checkboxes = document.querySelectorAll('.student-checkbox');
+  const selectAll = document.getElementById('selectAllStudents');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+
+  if (selectAll) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  }
+
+  updateStudentBulkActions();
+}
+
+
+function bulkDeleteStudents() {
+  const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+  
+  if (checkedBoxes.length === 0) {
+    alert('אנא בחר לפחות סטודנט אחד למחיקה');
+    return;
+  }
+  
+  const confirmMessage = `האם אתה בטוח שברצונך למחוק ${checkedBoxes.length} סטודנטים?`;
+  
+  if (confirm(confirmMessage)) {
+    const form = document.getElementById('studentsForm');
+    const bulkDeleteInput = document.createElement('input');
+    bulkDeleteInput.type = 'hidden';
+    bulkDeleteInput.name = 'bulk_delete';
+    bulkDeleteInput.value = 'true';
+    form.appendChild(bulkDeleteInput);
+    form.submit();
+  }
+}
+
+let lecturerSelectionMode = false;
+
+// פונקציות למרצים
+function toggleLecturerSelectionMode() {
+  const toggleBtn = document.getElementById('toggleLecturerSelection');
+  const checkboxCells = document.querySelectorAll('#lecturers-table .checkbox-cell');
+  const table = document.getElementById('lecturers-table');
+  const bulkActions = document.getElementById('lecturerBulkActions');
+
+  lecturerSelectionMode = !lecturerSelectionMode;
+
+  if (lecturerSelectionMode) {
+    checkboxCells.forEach(cell => cell.classList.add('show'));
+    table.classList.add('selection-mode-active');
+    toggleBtn.classList.add('active');
+    updateLecturerBulkActions(); // כדי לעדכן לפי כמות הבחירה
+  } else {
+    clearLecturerSelection(); // ניקוי הסימונים
+    checkboxCells.forEach(cell => cell.classList.remove('show'));
+    table.classList.remove('selection-mode-active');
+    toggleBtn.classList.remove('active');
+    toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר מרצים';
+    bulkActions.classList.remove('show'); // הסתרת כפתור השבתה וטקסט נבחרים
+  }
+}
+
+
+function toggleAllLecturerSelection() {
+  if (!lecturerSelectionMode) return;
+  const selectAll = document.getElementById('selectAllLecturers');
+  const checkboxes = document.querySelectorAll('.lecturer-checkbox');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = selectAll.checked;
+  });
+  
+  updateLecturerBulkActions();
+}
+
+function updateLecturerBulkActions() {
+  if (!lecturerSelectionMode) return;
+  const checkboxes = document.querySelectorAll('.lecturer-checkbox');
+  const checkedBoxes = document.querySelectorAll('.lecturer-checkbox:checked');
+  const bulkActions = document.getElementById('lecturerBulkActions');
+  const selectedCount = document.getElementById('lecturerSelectedCount');
+  const bulkDeactivateBtn = document.getElementById('lecturerBulkDeactivateBtn');
+  const selectAll = document.getElementById('selectAllLecturers');
+  const toggleBtn = document.getElementById('toggleLecturerSelection');
+
+  if (checkedBoxes.length > 0) {
+    bulkActions.classList.add('show');
+    selectedCount.textContent = checkedBoxes.length;
+    bulkDeactivateBtn.disabled = false;
+    toggleBtn.innerHTML = '<i class="fas fa-times me-1"></i> בטל בחירה';
+  } else {
+    bulkActions.classList.remove('show');
+    bulkDeactivateBtn.disabled = true;
+    toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר מרצים';
+  }
+
+  selectAll.checked = checkedBoxes.length === checkboxes.length && checkboxes.length > 0;
+  selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+}
+
+
+function clearLecturerSelection() {
+  const checkboxes = document.querySelectorAll('.lecturer-checkbox');
+  const selectAll = document.getElementById('selectAllLecturers');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  selectAll.checked = false;
+  selectAll.indeterminate = false;
+  
+  updateLecturerBulkActions();
+}
+
+function bulkDeactivateLecturers() {
+  const checkedBoxes = document.querySelectorAll('.lecturer-checkbox:checked');
+  
+  if (checkedBoxes.length === 0) {
+    alert('אנא בחר לפחות מרצה אחד להשבתה');
+    return;
+  }
+  
+  const confirmMessage = `האם אתה בטוח שברצונך להשבית ${checkedBoxes.length} מרצים?`;
+  
+  if (confirm(confirmMessage)) {
+    const form = document.getElementById('lecturersForm');
+    const bulkDeactivateInput = document.createElement('input');
+    bulkDeactivateInput.type = 'hidden';
+    bulkDeactivateInput.name = 'bulk_deactivate';
+    bulkDeactivateInput.value = 'true';
+    form.appendChild(bulkDeactivateInput);
+    form.submit();
+  }
+}
+
+</script>
+{% endblock %}

@@ -263,19 +263,41 @@ def update_request_status(request, request_id):
         return redirect('request_detail', request_id=req.id)
 
     return render(request, 'update_request.html', {'request': req,'statuses': PIPELINE_STATUSES})
+
+
+@require_http_methods(["GET", "POST"])
+@login_required
 def list_requests(request):
     user = request.user
-    if user.role == 0:  # Student
+
+    if request.method == "POST" and "delete_request_id" in request.POST:
+        request_id = request.POST.get("delete_request_id")
+        req_to_delete = get_object_or_404(Request, id=request_id)
+
+        if user == req_to_delete.student or user.role in [1, 2, 3]:
+            req_to_delete.delete()
+            messages.success(request, "הבקשה נמחקה בהצלחה.")
+            return redirect('list_requests')
+        else:
+            messages.error(request, "אין לך הרשאה למחוק בקשה זו.")
+            return redirect('list_requests')
+
+    if user.role == 0:
         base_queryset = Request.objects.filter(student=user)
-    elif user.role in [1, 2, 3]:  # Lecturer, Staff, Deanery
-        base_queryset = Request.objects.filter(models.Q(viewers=user) | models.Q(assigned_to=user)).distinct()
+    elif user.role in [1, 2, 3]:
+        base_queryset = Request.objects.filter(
+            models.Q(viewers=user) | models.Q(assigned_to=user)
+        ).distinct()
     else:
         base_queryset = Request.objects.none()
 
     search_query = request.GET.get('q')
     if search_query:
-        base_queryset = base_queryset.filter(models.Q(title__icontains=search_query) |
-            models.Q(description__icontains=search_query) | models.Q(resolution_notes__icontains=search_query))
+        base_queryset = base_queryset.filter(
+            models.Q(title__icontains=search_query) |
+            models.Q(description__icontains=search_query) |
+            models.Q(resolution_notes__icontains=search_query)
+        )
 
     status = request.GET.get('status')
     if status and status.isdigit():
@@ -293,6 +315,39 @@ def list_requests(request):
     if department and department.isdigit():
         base_queryset = base_queryset.filter(dept_id=int(department))
 
+    request_title = request.GET.get('request_title')
+    if request_title and request_title.isdigit():
+        base_queryset = base_queryset.filter(title=int(request_title))
+
+    date_range = request.GET.get('date_range')
+    if date_range:
+        from datetime import datetime, timedelta
+        today = timezone.now().date()
+        
+        if date_range == 'today':
+            base_queryset = base_queryset.filter(created__date=today)
+        elif date_range == 'yesterday':
+            yesterday = today - timedelta(days=1)
+            base_queryset = base_queryset.filter(created__date=yesterday)
+        elif date_range == 'this_week':
+            start_week = today - timedelta(days=today.weekday())
+            base_queryset = base_queryset.filter(created__date__gte=start_week)
+        elif date_range == 'last_week':
+            start_week = today - timedelta(days=today.weekday() + 7)
+            end_week = today - timedelta(days=today.weekday() + 1)
+            base_queryset = base_queryset.filter(created__date__range=[start_week, end_week])
+        elif date_range == 'this_month':
+            start_month = today.replace(day=1)
+            base_queryset = base_queryset.filter(created__date__gte=start_month)
+        elif date_range == 'last_month':
+            first_day_this_month = today.replace(day=1)
+            last_day_last_month = first_day_this_month - timedelta(days=1)
+            first_day_last_month = last_day_last_month.replace(day=1)
+            base_queryset = base_queryset.filter(created__date__range=[first_day_last_month, last_day_last_month])
+        elif date_range == 'this_year':
+            start_year = today.replace(month=1, day=1)
+            base_queryset = base_queryset.filter(created__date__gte=start_year)
+
     sla = request.GET.get('sla')
     if sla:
         pending = base_queryset.filter(status=0)
@@ -306,11 +361,10 @@ def list_requests(request):
             on_track_ids = [req.id for req in pending if req.get_sla_status() == "בזמן"]
             base_queryset = base_queryset.filter(id__in=on_track_ids)
 
-    # Date filters
+    from datetime import datetime
     date_from = request.GET.get('date_from')
     if date_from:
         try:
-            from datetime import datetime
             date_from = datetime.strptime(date_from, '%Y-%m-%d')
             base_queryset = base_queryset.filter(created__gte=date_from)
         except ValueError:
@@ -319,7 +373,6 @@ def list_requests(request):
     date_to = request.GET.get('date_to')
     if date_to:
         try:
-            from datetime import datetime
             date_to = datetime.strptime(date_to, '%Y-%m-%d')
             date_to = date_to.replace(hour=23, minute=59, second=59)
             base_queryset = base_queryset.filter(created__lte=date_to)
@@ -327,25 +380,53 @@ def list_requests(request):
             pass
 
     base_queryset = base_queryset.order_by('-created')
-    paginator = Paginator(base_queryset, 10)  # 10 requests per page
+
+    paginator = Paginator(base_queryset, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    status_counts = [
+        base_queryset.filter(status=0).count(),  
+        base_queryset.filter(status=1).count(),  
+        base_queryset.filter(status=2).count(),
+    ]
+
     departments = Department.objects.all()
 
-    context = {'page_obj': page_obj,'departments': departments,'statuses': Request.STATUSES,
-        'pipeline_statuses': Request.PIPELINE_STATUSES,'priorities': Request.PRIORITY_LEVELS,'search_query': search_query,
+    if user.role == 0:  # Student
+        user_request_titles = Request.objects.filter(student=user).values_list('title', flat=True).distinct()
+        user_request_titles = [(title, dict(Request.TITLES)[title]) for title in user_request_titles]
+    elif user.role in [1, 2, 3]:  # Staff/Lecturers
+        user_request_titles = Request.objects.filter(
+            models.Q(viewers=user) | models.Q(assigned_to=user)
+        ).values_list('title', flat=True).distinct()
+        user_request_titles = [(title, dict(Request.TITLES)[title]) for title in user_request_titles]
+    else:
+        user_request_titles = []
+
+    context = {
+        'page_obj': page_obj,
+        'departments': departments,
+        'statuses': Request.STATUSES,
+        'pipeline_statuses': Request.PIPELINE_STATUSES,
+        'priorities': Request.PRIORITY_LEVELS,
+        'user_request_titles': user_request_titles, 
+        'search_query': search_query,
         'filters': {
             'status': request.GET.get('status'),
             'pipeline_status': request.GET.get('pipeline_status'),
             'priority': request.GET.get('priority'),
             'department': request.GET.get('department'),
+            'request_title': request.GET.get('request_title'),  
+            'date_range': request.GET.get('date_range'),  
             'date_from': request.GET.get('date_from'),
             'date_to': request.GET.get('date_to'),
             'sla': request.GET.get('sla'),
-        }
+        },
+        'status_counts': status_counts,  
     }
-    return render(request, 'list_requests.html', context)
 
+    return render(request, 'list_requests.html', context)
 
 def get_filtered_requests(request):
     user = request.user

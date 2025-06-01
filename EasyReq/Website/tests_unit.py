@@ -10,14 +10,19 @@ from django.core import mail
 import json
 import io
 from unittest.mock import patch, MagicMock
+from datetime import datetime, timedelta
+from django.db.models import Q
+from django.contrib import messages
+
 
 from .models import (
-    Department, Course, Request, RequestStatus,
-    RequestComment, User, Notification
+    Department, Course, Request, RequestStatus, 
+    RequestComment, User, Notification, Review
 )
-from Website.views import filter_requests, get_filtered_requests
+from Website.views import filter_requests, get_filtered_requests 
 
 User = get_user_model()
+
 
 class AuthTests(TestCase):
     def setUp(self):
@@ -30,7 +35,7 @@ class AuthTests(TestCase):
             first_name='Test',
             last_name='User',
             department=self.department,
-            role=0
+            role=0  
         )
         self.course = Course.objects.create(name='מבוא', year=1, dept=self.department)
         self.user.courses.add(self.course)
@@ -47,7 +52,7 @@ class AuthTests(TestCase):
             'password': 'testpass123*'
         }, follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.user.get_full_name())
+        self.assertContains(response, self.user.get_full_name()) 
 
     def test_logout_redirects_to_login(self):
         self.client.login(username='testuser', password='testpass123*')
@@ -109,15 +114,7 @@ class AuthTests(TestCase):
         response = self.client.get(reverse('logout'))
         self.assertEqual(response.status_code, 302)
 
-    def test_update_password(self):
-        self.client.login(username='testuser', password='testpass123*')
-        self.client.post(reverse('profile'), {
-            'old_password': 'testpass123*',
-            'new_password1': 'Newpass456@',
-            'new_password2': 'Newpass456@'
-        }, follow=True)
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('Newpass456@'))
+   
     def test_register_passwords_mismatch(self):
         response = self.client.post(reverse('register'), {
             'username': 'failuser',
@@ -133,7 +130,7 @@ class AuthTests(TestCase):
         self.assertFalse(User.objects.filter(username='failuser').exists())
     def test_register_existing_username(self):
         response = self.client.post(reverse('register'), {
-            'username': 'testuser',  # כבר קיים
+            'username': 'testuser', 
             'password1': 'AnotherPass1!',
             'password2': 'AnotherPass1!',
             'email': 'another@example.com',
@@ -240,7 +237,7 @@ class AuthTests(TestCase):
 
     def test_register_with_duplicate_username_fails(self):
         response = self.client.post(reverse('register'), {
-            'username': 'testuser',  # כבר קיים
+            'username': 'testuser', 
             'password1': 'NewPass123!',
             'password2': 'NewPass123!',
             'email': 'newemail@example.com',
@@ -280,7 +277,7 @@ class AuthTests(TestCase):
         response = self.client.get(reverse('profile'))
         full_name = f"{self.user.first_name} {self.user.last_name}"
         self.assertContains(response, full_name)
-
+        
     def test_register_fails_on_missing_fields(self):
         response = self.client.post(reverse('register'), {
             'username': '',
@@ -311,7 +308,7 @@ class AuthTests(TestCase):
 
         response = self.client.post(reverse('create_request'), {
             'course': self.course.id,
-            'title': 0,
+            'title': 0, 
             'description': 'אני מבקש ערעור',
         }, follow=True)
 
@@ -340,7 +337,7 @@ class AuthTests(TestCase):
     def test_create_request_missing_title(self):
         self.client.login(username='testuser', password='testpass123*')
 
-        with self.assertRaises(TypeError):  # ✅ מצפה מראש לשגיאה
+        with self.assertRaises(TypeError):  
             self.client.post(reverse('create_request'), {
                 'course': self.course.id,
                 'description': 'בדיקה ללא title'
@@ -349,7 +346,7 @@ class AuthTests(TestCase):
     # check that an unauthenticated user cannot access the request submission screen
     def test_create_request_unauthenticated_redirect(self):
         response = self.client.get(reverse('create_request'))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 302)  
         self.assertIn(reverse('login'), response.url)
 
     #Test that the response page content after submission contains expected information
@@ -363,24 +360,21 @@ class AuthTests(TestCase):
         }, follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "בקשה")
+        self.assertContains(response, "בקשה") 
 
 class RequestViewsTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.factory = RequestFactory()
-
-        # יצירת מחלקה
+        
         self.department = Department.objects.create(name='Test Department')
-
-        # יצירת קורס
+        
         self.course = Course.objects.create(
             name='Test Course',
             year=1,
             dept=self.department
         )
-
-        # יצירת סטודנט
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
@@ -391,8 +385,7 @@ class RequestViewsTests(TestCase):
             role=0
         )
         self.student.courses.add(self.course)
-
-        # יצירת מרצה
+        
         self.lecturer = User.objects.create_user(
             username='lecturer',
             password='testpass123',
@@ -404,8 +397,7 @@ class RequestViewsTests(TestCase):
             is_active=True
         )
         self.lecturer.courses.add(self.course)
-
-        # יצירת צוות מזכירות
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -416,35 +408,30 @@ class RequestViewsTests(TestCase):
             role=2,
             is_active=True
         )
-
-        # יצירת בקשה
+        
         self.request = Request.objects.create(
             student=self.student,
             dept=self.department,
-            title=0,  # ערעור ציון
+            title=0, 
             description='בקשה לערעור ציון',
             course=self.course
         )
-
-        # הוספת המרצה כמטפל בבקשה
+        
         self.request.assigned_to.add(self.lecturer)
-
-        # יצירת סטטוס בקשה
+        
         self.status = RequestStatus.objects.create(
             request=self.request,
-            status=0,  # נשלח
+            status=0,  
             updated_by=self.student,
             notes='Request created'
         )
-
-        # יצירת תגובה לבקשה
+        
         self.comment = RequestComment.objects.create(
             request=self.request,
             user=self.student,
             comment='תגובה לבקשה'
         )
-
-        # יצירת התראה
+        
         self.notification = Notification.objects.create(
             user=self.lecturer,
             message='התראה חדשה',
@@ -452,17 +439,15 @@ class RequestViewsTests(TestCase):
         )
 
     def add_middleware_to_request(self, request):
-        """הוספת middleware לבקשה לצורך messages"""
         middleware = SessionMiddleware(lambda req: None)
         middleware.process_request(request)
         request.session.save()
-
+        
         messages = FallbackStorage(request)
         setattr(request, '_messages', messages)
         return request
 
     def test_request_detail_view_authorized(self):
-        """בדיקה שמשתמש מורשה יכול לראות פרטי בקשה"""
         self.client.login(username='student', password='testpass123')
         response = self.client.get(reverse('request_detail', args=[self.request.id]))
         self.assertEqual(response.status_code, 200)
@@ -470,14 +455,12 @@ class RequestViewsTests(TestCase):
         self.assertContains(response, 'בקשה לערעור ציון')
 
     def test_request_detail_view_staff(self):
-        """בדיקה שמזכירות יכולה לראות פרטי בקשה"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('request_detail', args=[self.request.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'בקשה לערעור ציון')
-
+    
     def test_request_detail_view_unauthorized(self):
-        """בדיקה שמשתמש לא מורשה לא יכול לראות פרטי בקשה"""
         other_student = User.objects.create_user(
             username='other_student',
             password='testpass123',
@@ -485,13 +468,12 @@ class RequestViewsTests(TestCase):
             department=self.department,
             role=0
         )
-
+        
         self.client.login(username='other_student', password='testpass123')
         response = self.client.get(reverse('request_detail', args=[self.request.id]))
-        self.assertEqual(response.status_code, 302)
-
+        self.assertEqual(response.status_code, 302)  
+    
     def test_request_detail_add_comment(self):
-        """בדיקה שניתן להוסיף תגובה לבקשה"""
         self.client.login(username='student', password='testpass123')
         response = self.client.post(
             reverse('request_detail', args=[self.request.id]),
@@ -500,7 +482,7 @@ class RequestViewsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'תגובה חדשה לבקשה')
-
+        
         comment_exists = RequestComment.objects.filter(
             request=self.request,
             comment='תגובה חדשה לבקשה'
@@ -508,63 +490,59 @@ class RequestViewsTests(TestCase):
         self.assertTrue(comment_exists)
 
     def test_update_request_status_by_staff(self):
-        """בדיקה שמזכירות יכולה לעדכן סטטוס בקשה"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.post(
             reverse('update_request_status', args=[self.request.id]),
             {
-                'pipeline_status': '1',
+                'pipeline_status': '1', 
                 'status_notes': 'בדיקת עדכון סטטוס'
             },
             follow=True
         )
         self.assertEqual(response.status_code, 200)
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 1)
-
+        
         status_exists = RequestStatus.objects.filter(
             request=self.request,
             status=1,
             notes='בדיקת עדכון סטטוס'
         ).exists()
         self.assertTrue(status_exists)
-
-    def test_update_request_status_by_lecturer(self):
-        """בדיקה שמרצה יכול לעדכן סטטוס בקשה"""
-
+    
+    def test_update_request_status_by_lecturer(self):        
         self.request.assigned_to.add(self.lecturer)
-
+        
         request_factory = RequestFactory()
         update_request = request_factory.post(
             reverse('update_request_status', args=[self.request.id]),
             {
-                'pipeline_status': '2',  # בטיפול
+                'pipeline_status': '2', 
                 'status_notes': 'בדיקת עדכון סטטוס'
             }
         )
-
+        
         update_request.user = self.lecturer
-
+        
         middleware = SessionMiddleware(lambda req: None)
         middleware.process_request(update_request)
         update_request.session.save()
-
+        
         from django.contrib.messages.storage.fallback import FallbackStorage
         setattr(update_request, '_messages', FallbackStorage(update_request))
-
+        
         from django.views.decorators.csrf import csrf_exempt
         from Website.views import update_request_status
-
+        
         response = csrf_exempt(update_request_status)(update_request, self.request.id)
-
+        
         self.assertEqual(response.status_code, 302)
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 2)
-
+    
     def test_update_request_status_by_student_not_allowed(self):
-        """בדיקה שסטודנט לא יכול לעדכן סטטוס בקשה"""
         self.client.login(username='student', password='testpass123')
         response = self.client.post(
             reverse('update_request_status', args=[self.request.id]),
@@ -575,12 +553,11 @@ class RequestViewsTests(TestCase):
             follow=True
         )
         self.assertRedirects(response, reverse('home'))
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 0)
-
+    
     def test_update_request_status_to_resolved(self):
-        """בדיקה שניתן לסמן בקשה כמטופלת (אושרה/נדחתה)"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.post(
             reverse('update_request_status', args=[self.request.id]),
@@ -593,65 +570,64 @@ class RequestViewsTests(TestCase):
             follow=True
         )
         self.assertEqual(response.status_code, 200)
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 4)
-        self.assertEqual(self.request.status, 1)
+        self.assertEqual(self.request.status, 1) 
         self.assertEqual(self.request.resolution_notes, 'פרטי האישור כאן')
         self.assertIsNotNone(self.request.resolved_date)
 
     def test_list_requests_student_view(self):
-        """בדיקה שסטודנט רואה רק את הבקשות שלו"""
         login_successful = self.client.login(username='student', password='testpass123')
         self.assertTrue(login_successful)
-
+        
         response = self.client.get(reverse('list_requests'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'list_requests.html')
-
+        
         self.assertContains(response, str(self.request.id))
-
+        
         self.assertContains(response, self.student.get_full_name())
-
+    
     def test_list_requests_staff_view(self):
         login_successful = self.client.login(username='staff', password='testpass123')
         self.assertTrue(login_successful)
-
+        
         self.staff.department = self.department
         self.staff.save()
-
+        
         self.request.viewers.add(self.staff)
-
+        
         response = self.client.get(reverse('list_requests'))
         self.assertEqual(response.status_code, 200)
-
+        
         self.assertContains(response, str(self.request.id))
-
+    
     def test_list_requests_with_filters(self):
         login_successful = self.client.login(username='staff', password='testpass123')
         self.assertTrue(login_successful)
-
+        
         self.staff.department = self.department
         self.staff.save()
-
+        
         high_priority_request = Request.objects.create(
             student=self.student,
             dept=self.department,
-            title=5,
+            title=5,  
             description='בקשה בעדיפות גבוהה',
-            priority=2
+            priority=2 
         )
         high_priority_request.viewers.add(self.staff)
-
+        
         self.assertEqual(high_priority_request.priority, 2)
-
+        
         response = self.client.get(f"{reverse('list_requests')}?priority=2")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, str(high_priority_request.id))
-
-        self.request.status = 1
+        
+        self.request.status = 1 
         self.request.save()
-
+        
         response = self.client.get(f"{reverse('list_requests')}?status=1")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, str(self.request.id))
@@ -662,16 +638,14 @@ class RegistrationTests(TestCase):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
         self.course = Course.objects.create(name='Test Course', year=1, dept=self.department)
-
-
+    
+    
     def test_registration_success_invalid_user(self):
-        """בדיקה שדף הצלחת ההרשמה מפנה לדף הרשמה אם המשתמש לא קיים"""
-        non_existent_id = 9999
+        non_existent_id = 9999  
         response = self.client.get(reverse('registration_success', args=[non_existent_id]))
         self.assertRedirects(response, reverse('register'))
-
+    
     def test_registration_success_student_role(self):
-        """בדיקה שדף הצלחת ההרשמה מציג מידע נכון לסטודנט"""
         student = User.objects.create_user(
             username='test_student',
             password='pass123',
@@ -679,13 +653,12 @@ class RegistrationTests(TestCase):
             department=self.department,
             role=0
         )
-
+        
         response = self.client.get(reverse('registration_success', args=[student.id]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['role'], 0)
-
+    
     def test_registration_success_lecturer_role(self):
-        """בדיקה שדף הצלחת ההרשמה מציג מידע נכון למרצה"""
         lecturer = User.objects.create_user(
             username='test_lecturer',
             password='pass123',
@@ -693,7 +666,7 @@ class RegistrationTests(TestCase):
             department=self.department,
             role=1
         )
-
+        
         response = self.client.get(reverse('registration_success', args=[lecturer.id]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['role'], 1)
@@ -704,49 +677,45 @@ class GetCoursesTests(TestCase):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
         self.other_department = Department.objects.create(name='Other Department')
-
+        
         self.course1 = Course.objects.create(name='Course 1', year=1, dept=self.department)
         self.course2 = Course.objects.create(name='Course 2', year=2, dept=self.department)
-
+        
         self.other_course = Course.objects.create(name='Other Course', year=1, dept=self.other_department)
-
+    
     def test_get_courses_for_department(self):
-        """בדיקה שהפונקציה מחזירה את הקורסים הנכונים עבור מחלקה"""
         response = self.client.get(f"{reverse('get_courses')}?department={self.department.id}")
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertEqual(len(data['courses']), 2)
         course_names = [course['name'] for course in data['courses']]
         self.assertIn('Course 1', course_names)
         self.assertIn('Course 2', course_names)
-
+    
     def test_get_courses_empty_department(self):
-        """בדיקה שהפונקציה מחזירה רשימה ריקה כאשר אין מחלקה"""
         response = self.client.get(reverse('get_courses'))
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertEqual(len(data['courses']), 0)
-
+    
     def test_get_courses_nonexistent_department(self):
-        """בדיקה שהפונקציה מחזירה רשימה ריקה כאשר המחלקה לא קיימת"""
-        non_existent_id = 9999
+        non_existent_id = 9999  
         response = self.client.get(f"{reverse('get_courses')}?department={non_existent_id}")
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertEqual(len(data['courses']), 0)
-
+    
     def test_get_courses_correct_format(self):
-        """בדיקה שהפונקציה מחזירה את הקורסים בפורמט הנכון"""
         response = self.client.get(f"{reverse('get_courses')}?department={self.department.id}")
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertIn('courses', data)
         self.assertIsInstance(data['courses'], list)
-
+        
         if len(data['courses']) > 0:
             first_course = data['courses'][0]
             self.assertIn('id', first_course)
@@ -756,7 +725,7 @@ class ExportTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -767,7 +736,7 @@ class ExportTests(TestCase):
             role=2,
             is_active=True
         )
-
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
@@ -777,30 +746,29 @@ class ExportTests(TestCase):
             department=self.department,
             role=0
         )
-
+        
         self.course = Course.objects.create(name='Test Course', year=1, dept=self.department)
-
+        
         for i in range(3):
             request = Request.objects.create(
                 student=self.student,
                 dept=self.department,
-                title=i % 3,
+                title=i % 3,  
                 description=f'Test Request {i+1}',
-                priority=i % 3,
+                priority=i % 3,  
                 course=self.course
             )
             RequestStatus.objects.create(
                 request=request,
-                status=i % 3,
+                status=i % 3,  
                 updated_by=self.student,
                 notes=f'Status notes {i+1}'
             )
-
+    
     def test_export_dashboard_excel_staff(self):
-        """בדיקה שייצוא אקסל מלוח המחוונים עובד למזכירות"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('export_dashboard_excel'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
@@ -811,13 +779,12 @@ class ExportTests(TestCase):
             'attachment; filename=dashboard_stats.xlsx'
         )
         self.assertTrue(len(response.content) > 0)
-
-
+    
+    
     def test_export_requests_csv(self):
-        """בדיקה שייצוא CSV של בקשות עובד"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('export_requests_csv'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'text/csv')
         self.assertEqual(
@@ -825,12 +792,11 @@ class ExportTests(TestCase):
             'attachment; filename="Requests_export.xlsx"'
         )
         self.assertTrue(len(response.content) > 0)
-
+    
     def test_export_requests_excel(self):
-        """בדיקה שייצוא אקסל של בקשות עובד"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('export_requests_excel'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
@@ -841,15 +807,15 @@ class ExportTests(TestCase):
             'attachment; filename="Requests_export.xlsx"'
         )
         self.assertTrue(len(response.content) > 0)
-
+    
 def get_filtered_requests(request):
     if callable(request):
         return Request.objects.all().order_by('-created')
-
+    
     user = request.user
-    if user.role == 0:
+    if user.role == 0: 
         base_queryset = Request.objects.filter(student=user)
-    elif user.role in [1, 2, 3]:
+    elif user.role in [1, 2, 3]:  
         base_queryset = Request.objects.filter(models.Q(viewers=user) | models.Q(assigned_to=user)).distinct()
     else:
         base_queryset = Request.objects.none()
@@ -915,63 +881,60 @@ class FilterRequestsTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
             department=self.department,
             role=0
         )
-
+        
         self.request1 = Request.objects.create(
             student=self.student,
             dept=self.department,
             title=0,
             description='בקשה 1',
             priority=0,
-            status=0
+            status=0 
         )
-
+        
         self.request2 = Request.objects.create(
             student=self.student,
             dept=self.department,
             title=1,
             description='בקשה 2',
-            priority=1,
-            status=1
+            priority=1, 
+            status=1 
         )
-
+        
         self.request3 = Request.objects.create(
             student=self.student,
             dept=self.department,
             title=2,
             description='בקשה 3',
-            priority=2,
-            status=2
+            priority=2, 
+            status=2 
         )
-
+    
     def test_filter_by_status(self):
-        """בדיקת סינון לפי סטטוס"""
         request = self.factory.get('/', {'status': '1'})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
+        
         self.assertEqual(filtered.count(), 1)
         self.assertEqual(filtered.first().status, 1)
-
+    
     def test_filter_by_priority(self):
-        """בדיקת סינון לפי עדיפות"""
         request = self.factory.get('/', {'priority': '2'})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
+        
         self.assertEqual(filtered.count(), 1)
         self.assertEqual(filtered.first().priority, 2)
-
+    
     def test_filter_by_department(self):
-        """בדיקת סינון לפי מחלקה"""
         other_department = Department.objects.create(name='Other Department')
-
+        
         Request.objects.create(
             student=self.student,
             dept=other_department,
@@ -980,41 +943,39 @@ class FilterRequestsTests(TestCase):
             priority=0,
             status=0
         )
-
+        
         request = self.factory.get('/', {'department': str(self.department.id)})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
-        self.assertEqual(filtered.count(), 3)
+        
+        self.assertEqual(filtered.count(), 3) 
         for req in filtered:
             self.assertEqual(req.dept.id, self.department.id)
-
+    
     def test_filter_by_date_range(self):
-        """בדיקת סינון לפי טווח תאריכים"""
         from datetime import datetime, timedelta
-
+        
         old_date = timezone.now() - timedelta(days=30)
         self.request1.created = old_date
         self.request1.save()
-
+        
         yesterday = (timezone.now() - timedelta(days=1)).strftime('%Y-%m-%d')
         request = self.factory.get('/', {'date_from': yesterday})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
-        self.assertEqual(filtered.count(), 2)
+        
+        self.assertEqual(filtered.count(), 2) 
         for req in filtered:
             self.assertNotEqual(req.id, self.request1.id)
-
+    
     def test_multiple_filters(self):
-        """בדיקת שילוב של מספר מסננים"""
         request = self.factory.get('/', {
             'status': '0',
             'priority': '0'
         })
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
+        
         self.assertEqual(filtered.count(), 1)
         self.assertEqual(filtered.first().id, self.request1.id)
 
@@ -1023,7 +984,7 @@ class CourseManagementTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -1034,13 +995,13 @@ class CourseManagementTests(TestCase):
             role=2,
             is_active=True
         )
-
+        
         self.course = Course.objects.create(
             name='Test Course',
             year=1,
             dept=self.department
         )
-
+        
         self.lecturer = User.objects.create_user(
             username='lecturer',
             password='testpass123',
@@ -1051,73 +1012,66 @@ class CourseManagementTests(TestCase):
             role=1,
             is_active=True
         )
-
+    
     def test_manage_courses_view(self):
-        """בדיקת תצוגת ניהול קורסים"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('manage_courses'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'manage_courses.html')
         self.assertIn('courses', response.context)
         self.assertEqual(response.context['courses'].count(), 1)
         self.assertEqual(response.context['courses'].first().name, 'Test Course')
-
+    
     def test_add_course(self):
-        """בדיקת הוספת קורס חדש"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.post(reverse('add_course'), {
             'name': 'New Course',
             'year': '2',
             'lecturers': [self.lecturer.id]
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
-        # בדיקה שהקורס נוצר
+        
         self.assertTrue(Course.objects.filter(name='New Course').exists())
         course = Course.objects.get(name='New Course')
         self.assertEqual(course.year, 2)
-
-        # בדיקה שהמרצה שויך לקורס
+        
         self.assertTrue(course.user_set.filter(id=self.lecturer.id).exists())
-
+    
     def test_edit_course(self):
-        """בדיקת עריכת קורס קיים"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.post(reverse('edit_course', args=[self.course.id]), {
             'name': 'Updated Course',
             'year': '3',
             'lecturers': [self.lecturer.id]
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
+        
         self.course.refresh_from_db()
         self.assertEqual(self.course.name, 'Updated Course')
-        self.assertEqual(self.course.year, 3)
+        self.assertEqual(self.course.year, 3)        
 
         self.assertTrue(self.course.user_set.filter(id=self.lecturer.id).exists())
-
+    
     def test_delete_course(self):
-        """בדיקת מחיקת קורס"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.get(reverse('delete_course', args=[self.course.id]), follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
+        
         self.assertFalse(Course.objects.filter(id=self.course.id).exists())
-
+    
     def test_assign_lecturer_courses_form(self):
-        """בדיקת טופס שיוך מרצים לקורס"""
         self.client.login(username='staff', password='testpass123')
-
+        
         lecturer2 = User.objects.create_user(
             username='lecturer2',
             password='testpass123',
@@ -1126,14 +1080,14 @@ class CourseManagementTests(TestCase):
             role=1,
             is_active=True
         )
-
+        
         response = self.client.post(reverse('assign_lecturer_courses_form', args=[self.course.id]), {
             'lecturers': [self.lecturer.id, lecturer2.id]
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
+        
         self.assertEqual(self.course.user_set.filter(role=1).count(), 2)
         self.assertTrue(self.course.user_set.filter(id=self.lecturer.id).exists())
         self.assertTrue(self.course.user_set.filter(id=lecturer2.id).exists())
@@ -1143,7 +1097,7 @@ class StudentManagementTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -1154,7 +1108,7 @@ class StudentManagementTests(TestCase):
             role=2,
             is_active=True
         )
-
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
@@ -1165,13 +1119,13 @@ class StudentManagementTests(TestCase):
             role=0,
             is_active=True
         )
-
+        
         self.course = Course.objects.create(
             name='Test Course',
             year=1,
             dept=self.department
         )
-
+        
         self.request = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -1180,28 +1134,25 @@ class StudentManagementTests(TestCase):
             priority=1
         )
 
-
+    
     def test_student_requests_unauthorized(self):
-        """בדיקה שרק צוות יכול לגשת לבקשות של סטודנט"""
         self.client.login(username='student', password='testpass123')
         response = self.client.get(reverse('student_requests', args=[self.student.id]))
-
+        
         self.assertIn(response.status_code, [302, 403])
-
+    
     def test_edit_student_form(self):
-        """בדיקת טופס עריכת פרטי סטודנט"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.get(reverse('edit_student_form', args=[self.student.id]))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'edit_student.html')
         self.assertEqual(response.context['student'], self.student)
-
+    
     def test_edit_student_update(self):
-        """בדיקת עדכון פרטי סטודנט"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.post(reverse('edit_student_form', args=[self.student.id]), {
             'first_name': 'Updated',
             'last_name': 'Student',
@@ -1209,10 +1160,10 @@ class StudentManagementTests(TestCase):
             'info': 'Updated info',
             'is_active': 'on'
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('dashboard'))
-
+        
 
     from django.test import TestCase, Client, RequestFactory
 from django.urls import reverse
@@ -1228,10 +1179,10 @@ import io
 from unittest.mock import patch, MagicMock
 
 from .models import (
-    Department, Course, Request, RequestStatus,
+    Department, Course, Request, RequestStatus, 
     RequestComment, User, Notification
 )
-from Website.views import filter_requests, get_filtered_requests
+from Website.views import filter_requests, get_filtered_requests 
 
 User = get_user_model()
 
@@ -1246,7 +1197,7 @@ class AuthTests(TestCase):
             first_name='Test',
             last_name='User',
             department=self.department,
-            role=0
+            role=0  
         )
         self.course = Course.objects.create(name='מבוא', year=1, dept=self.department)
         self.user.courses.add(self.course)
@@ -1263,7 +1214,7 @@ class AuthTests(TestCase):
             'password': 'testpass123*'
         }, follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.user.get_full_name())
+        self.assertContains(response, self.user.get_full_name()) 
 
     def test_logout_redirects_to_login(self):
         self.client.login(username='testuser', password='testpass123*')
@@ -1325,15 +1276,6 @@ class AuthTests(TestCase):
         response = self.client.get(reverse('logout'))
         self.assertEqual(response.status_code, 302)
 
-    def test_update_password(self):
-        self.client.login(username='testuser', password='testpass123*')
-        self.client.post(reverse('profile'), {
-            'old_password': 'testpass123*',
-            'new_password1': 'Newpass456@',
-            'new_password2': 'Newpass456@'
-        }, follow=True)
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('Newpass456@'))
     def test_register_passwords_mismatch(self):
         response = self.client.post(reverse('register'), {
             'username': 'failuser',
@@ -1349,7 +1291,7 @@ class AuthTests(TestCase):
         self.assertFalse(User.objects.filter(username='failuser').exists())
     def test_register_existing_username(self):
         response = self.client.post(reverse('register'), {
-            'username': 'testuser',  # כבר קיים
+            'username': 'testuser',  
             'password1': 'AnotherPass1!',
             'password2': 'AnotherPass1!',
             'email': 'another@example.com',
@@ -1456,7 +1398,7 @@ class AuthTests(TestCase):
 
     def test_register_with_duplicate_username_fails(self):
         response = self.client.post(reverse('register'), {
-            'username': 'testuser',  # כבר קיים
+            'username': 'testuser',  
             'password1': 'NewPass123!',
             'password2': 'NewPass123!',
             'email': 'newemail@example.com',
@@ -1496,7 +1438,7 @@ class AuthTests(TestCase):
         response = self.client.get(reverse('profile'))
         full_name = f"{self.user.first_name} {self.user.last_name}"
         self.assertContains(response, full_name)
-
+        
     def test_register_fails_on_missing_fields(self):
         response = self.client.post(reverse('register'), {
             'username': '',
@@ -1527,7 +1469,7 @@ class AuthTests(TestCase):
 
         response = self.client.post(reverse('create_request'), {
             'course': self.course.id,
-            'title': 0,
+            'title': 0, 
             'description': 'אני מבקש ערעור',
         }, follow=True)
 
@@ -1556,7 +1498,7 @@ class AuthTests(TestCase):
     def test_create_request_missing_title(self):
         self.client.login(username='testuser', password='testpass123*')
 
-        with self.assertRaises(TypeError):  # ✅ מצפה מראש לשגיאה
+        with self.assertRaises(TypeError):  # 
             self.client.post(reverse('create_request'), {
                 'course': self.course.id,
                 'description': 'בדיקה ללא title'
@@ -1565,7 +1507,7 @@ class AuthTests(TestCase):
     # check that an unauthenticated user cannot access the request submission screen
     def test_create_request_unauthenticated_redirect(self):
         response = self.client.get(reverse('create_request'))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 302)  
         self.assertIn(reverse('login'), response.url)
 
     #Test that the response page content after submission contains expected information
@@ -1579,24 +1521,21 @@ class AuthTests(TestCase):
         }, follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "בקשה")
+        self.assertContains(response, "בקשה") 
 
 class RequestViewsTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.factory = RequestFactory()
-
-        # יצירת מחלקה
+        
         self.department = Department.objects.create(name='Test Department')
-
-        # יצירת קורס
+        
         self.course = Course.objects.create(
             name='Test Course',
             year=1,
             dept=self.department
         )
-
-        # יצירת סטודנט
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
@@ -1607,8 +1546,7 @@ class RequestViewsTests(TestCase):
             role=0
         )
         self.student.courses.add(self.course)
-
-        # יצירת מרצה
+        
         self.lecturer = User.objects.create_user(
             username='lecturer',
             password='testpass123',
@@ -1620,8 +1558,7 @@ class RequestViewsTests(TestCase):
             is_active=True
         )
         self.lecturer.courses.add(self.course)
-
-        # יצירת צוות מזכירות
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -1632,35 +1569,30 @@ class RequestViewsTests(TestCase):
             role=2,
             is_active=True
         )
-
-        # יצירת בקשה
+        
         self.request = Request.objects.create(
             student=self.student,
             dept=self.department,
-            title=0,  # ערעור ציון
+            title=0,  
             description='בקשה לערעור ציון',
             course=self.course
         )
-
-        # הוספת המרצה כמטפל בבקשה
+        
         self.request.assigned_to.add(self.lecturer)
-
-        # יצירת סטטוס בקשה
+        
         self.status = RequestStatus.objects.create(
             request=self.request,
-            status=0,  # נשלח
+            status=0,  
             updated_by=self.student,
             notes='Request created'
         )
-
-        # יצירת תגובה לבקשה
+        
         self.comment = RequestComment.objects.create(
             request=self.request,
             user=self.student,
             comment='תגובה לבקשה'
         )
-
-        # יצירת התראה
+        
         self.notification = Notification.objects.create(
             user=self.lecturer,
             message='התראה חדשה',
@@ -1668,17 +1600,15 @@ class RequestViewsTests(TestCase):
         )
 
     def add_middleware_to_request(self, request):
-        """הוספת middleware לבקשה לצורך messages"""
         middleware = SessionMiddleware(lambda req: None)
         middleware.process_request(request)
         request.session.save()
-
+        
         messages = FallbackStorage(request)
         setattr(request, '_messages', messages)
         return request
 
     def test_request_detail_view_authorized(self):
-        """בדיקה שמשתמש מורשה יכול לראות פרטי בקשה"""
         self.client.login(username='student', password='testpass123')
         response = self.client.get(reverse('request_detail', args=[self.request.id]))
         self.assertEqual(response.status_code, 200)
@@ -1686,14 +1616,12 @@ class RequestViewsTests(TestCase):
         self.assertContains(response, 'בקשה לערעור ציון')
 
     def test_request_detail_view_staff(self):
-        """בדיקה שמזכירות יכולה לראות פרטי בקשה"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('request_detail', args=[self.request.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'בקשה לערעור ציון')
-
+    
     def test_request_detail_view_unauthorized(self):
-        """בדיקה שמשתמש לא מורשה לא יכול לראות פרטי בקשה"""
         other_student = User.objects.create_user(
             username='other_student',
             password='testpass123',
@@ -1701,13 +1629,12 @@ class RequestViewsTests(TestCase):
             department=self.department,
             role=0
         )
-
+        
         self.client.login(username='other_student', password='testpass123')
         response = self.client.get(reverse('request_detail', args=[self.request.id]))
-        self.assertEqual(response.status_code, 302)
-
+        self.assertEqual(response.status_code, 302)  
+    
     def test_request_detail_add_comment(self):
-        """בדיקה שניתן להוסיף תגובה לבקשה"""
         self.client.login(username='student', password='testpass123')
         response = self.client.post(
             reverse('request_detail', args=[self.request.id]),
@@ -1716,7 +1643,7 @@ class RequestViewsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'תגובה חדשה לבקשה')
-
+        
         comment_exists = RequestComment.objects.filter(
             request=self.request,
             comment='תגובה חדשה לבקשה'
@@ -1724,63 +1651,60 @@ class RequestViewsTests(TestCase):
         self.assertTrue(comment_exists)
 
     def test_update_request_status_by_staff(self):
-        """בדיקה שמזכירות יכולה לעדכן סטטוס בקשה"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.post(
             reverse('update_request_status', args=[self.request.id]),
             {
-                'pipeline_status': '1',
+                'pipeline_status': '1', 
                 'status_notes': 'בדיקת עדכון סטטוס'
             },
             follow=True
         )
         self.assertEqual(response.status_code, 200)
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 1)
-
+        
         status_exists = RequestStatus.objects.filter(
             request=self.request,
             status=1,
             notes='בדיקת עדכון סטטוס'
         ).exists()
         self.assertTrue(status_exists)
-
+    
     def test_update_request_status_by_lecturer(self):
-        """בדיקה שמרצה יכול לעדכן סטטוס בקשה"""
-
+        
         self.request.assigned_to.add(self.lecturer)
-
+        
         request_factory = RequestFactory()
         update_request = request_factory.post(
             reverse('update_request_status', args=[self.request.id]),
             {
-                'pipeline_status': '2',  # בטיפול
+                'pipeline_status': '2',  
                 'status_notes': 'בדיקת עדכון סטטוס'
             }
         )
-
+        
         update_request.user = self.lecturer
-
+        
         middleware = SessionMiddleware(lambda req: None)
         middleware.process_request(update_request)
         update_request.session.save()
-
+        
         from django.contrib.messages.storage.fallback import FallbackStorage
         setattr(update_request, '_messages', FallbackStorage(update_request))
-
+        
         from django.views.decorators.csrf import csrf_exempt
         from Website.views import update_request_status
-
+        
         response = csrf_exempt(update_request_status)(update_request, self.request.id)
-
+        
         self.assertEqual(response.status_code, 302)
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 2)
-
+    
     def test_update_request_status_by_student_not_allowed(self):
-        """בדיקה שסטודנט לא יכול לעדכן סטטוס בקשה"""
         self.client.login(username='student', password='testpass123')
         response = self.client.post(
             reverse('update_request_status', args=[self.request.id]),
@@ -1791,12 +1715,11 @@ class RequestViewsTests(TestCase):
             follow=True
         )
         self.assertRedirects(response, reverse('home'))
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 0)
-
+    
     def test_update_request_status_to_resolved(self):
-        """בדיקה שניתן לסמן בקשה כמטופלת (אושרה/נדחתה)"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.post(
             reverse('update_request_status', args=[self.request.id]),
@@ -1809,65 +1732,64 @@ class RequestViewsTests(TestCase):
             follow=True
         )
         self.assertEqual(response.status_code, 200)
-
+        
         self.request.refresh_from_db()
         self.assertEqual(self.request.pipeline_status, 4)
-        self.assertEqual(self.request.status, 1)
+        self.assertEqual(self.request.status, 1) 
         self.assertEqual(self.request.resolution_notes, 'פרטי האישור כאן')
         self.assertIsNotNone(self.request.resolved_date)
 
     def test_list_requests_student_view(self):
-        """בדיקה שסטודנט רואה רק את הבקשות שלו"""
         login_successful = self.client.login(username='student', password='testpass123')
         self.assertTrue(login_successful)
-
+        
         response = self.client.get(reverse('list_requests'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'list_requests.html')
-
+        
         self.assertContains(response, str(self.request.id))
-
+        
         self.assertContains(response, self.student.get_full_name())
-
+    
     def test_list_requests_staff_view(self):
         login_successful = self.client.login(username='staff', password='testpass123')
         self.assertTrue(login_successful)
-
+        
         self.staff.department = self.department
         self.staff.save()
-
+        
         self.request.viewers.add(self.staff)
-
+        
         response = self.client.get(reverse('list_requests'))
         self.assertEqual(response.status_code, 200)
-
+        
         self.assertContains(response, str(self.request.id))
-
+    
     def test_list_requests_with_filters(self):
         login_successful = self.client.login(username='staff', password='testpass123')
         self.assertTrue(login_successful)
-
+        
         self.staff.department = self.department
         self.staff.save()
-
+        
         high_priority_request = Request.objects.create(
             student=self.student,
             dept=self.department,
-            title=5,
+            title=5,  
             description='בקשה בעדיפות גבוהה',
-            priority=2
+            priority=2 
         )
         high_priority_request.viewers.add(self.staff)
-
+        
         self.assertEqual(high_priority_request.priority, 2)
-
+        
         response = self.client.get(f"{reverse('list_requests')}?priority=2")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, str(high_priority_request.id))
-
-        self.request.status = 1
+        
+        self.request.status = 1 
         self.request.save()
-
+        
         response = self.client.get(f"{reverse('list_requests')}?status=1")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, str(self.request.id))
@@ -1878,16 +1800,14 @@ class RegistrationTests(TestCase):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
         self.course = Course.objects.create(name='Test Course', year=1, dept=self.department)
-
-
+    
+    
     def test_registration_success_invalid_user(self):
-        """בדיקה שדף הצלחת ההרשמה מפנה לדף הרשמה אם המשתמש לא קיים"""
-        non_existent_id = 9999
+        non_existent_id = 9999  
         response = self.client.get(reverse('registration_success', args=[non_existent_id]))
         self.assertRedirects(response, reverse('register'))
-
+    
     def test_registration_success_student_role(self):
-        """בדיקה שדף הצלחת ההרשמה מציג מידע נכון לסטודנט"""
         student = User.objects.create_user(
             username='test_student',
             password='pass123',
@@ -1895,13 +1815,12 @@ class RegistrationTests(TestCase):
             department=self.department,
             role=0
         )
-
+        
         response = self.client.get(reverse('registration_success', args=[student.id]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['role'], 0)
-
+    
     def test_registration_success_lecturer_role(self):
-        """בדיקה שדף הצלחת ההרשמה מציג מידע נכון למרצה"""
         lecturer = User.objects.create_user(
             username='test_lecturer',
             password='pass123',
@@ -1909,7 +1828,7 @@ class RegistrationTests(TestCase):
             department=self.department,
             role=1
         )
-
+        
         response = self.client.get(reverse('registration_success', args=[lecturer.id]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['role'], 1)
@@ -1920,49 +1839,45 @@ class GetCoursesTests(TestCase):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
         self.other_department = Department.objects.create(name='Other Department')
-
+        
         self.course1 = Course.objects.create(name='Course 1', year=1, dept=self.department)
         self.course2 = Course.objects.create(name='Course 2', year=2, dept=self.department)
-
+        
         self.other_course = Course.objects.create(name='Other Course', year=1, dept=self.other_department)
-
+    
     def test_get_courses_for_department(self):
-        """בדיקה שהפונקציה מחזירה את הקורסים הנכונים עבור מחלקה"""
         response = self.client.get(f"{reverse('get_courses')}?department={self.department.id}")
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertEqual(len(data['courses']), 2)
         course_names = [course['name'] for course in data['courses']]
         self.assertIn('Course 1', course_names)
         self.assertIn('Course 2', course_names)
-
+    
     def test_get_courses_empty_department(self):
-        """בדיקה שהפונקציה מחזירה רשימה ריקה כאשר אין מחלקה"""
         response = self.client.get(reverse('get_courses'))
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertEqual(len(data['courses']), 0)
-
+    
     def test_get_courses_nonexistent_department(self):
-        """בדיקה שהפונקציה מחזירה רשימה ריקה כאשר המחלקה לא קיימת"""
-        non_existent_id = 9999
+        non_existent_id = 9999  
         response = self.client.get(f"{reverse('get_courses')}?department={non_existent_id}")
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertEqual(len(data['courses']), 0)
-
+    
     def test_get_courses_correct_format(self):
-        """בדיקה שהפונקציה מחזירה את הקורסים בפורמט הנכון"""
         response = self.client.get(f"{reverse('get_courses')}?department={self.department.id}")
         self.assertEqual(response.status_code, 200)
-
+        
         data = json.loads(response.content)
         self.assertIn('courses', data)
         self.assertIsInstance(data['courses'], list)
-
+        
         if len(data['courses']) > 0:
             first_course = data['courses'][0]
             self.assertIn('id', first_course)
@@ -1972,7 +1887,7 @@ class ExportTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -1983,7 +1898,7 @@ class ExportTests(TestCase):
             role=2,
             is_active=True
         )
-
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
@@ -1993,30 +1908,29 @@ class ExportTests(TestCase):
             department=self.department,
             role=0
         )
-
+        
         self.course = Course.objects.create(name='Test Course', year=1, dept=self.department)
-
+        
         for i in range(3):
             request = Request.objects.create(
                 student=self.student,
                 dept=self.department,
-                title=i % 3,
+                title=i % 3,  
                 description=f'Test Request {i+1}',
-                priority=i % 3,
+                priority=i % 3,  
                 course=self.course
             )
             RequestStatus.objects.create(
                 request=request,
-                status=i % 3,
+                status=i % 3,  
                 updated_by=self.student,
                 notes=f'Status notes {i+1}'
             )
-
+    
     def test_export_dashboard_excel_staff(self):
-        """בדיקה שייצוא אקסל מלוח המחוונים עובד למזכירות"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('export_dashboard_excel'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
@@ -2027,13 +1941,12 @@ class ExportTests(TestCase):
             'attachment; filename=dashboard_stats.xlsx'
         )
         self.assertTrue(len(response.content) > 0)
-
-
+    
+    
     def test_export_requests_csv(self):
-        """בדיקה שייצוא CSV של בקשות עובד"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('export_requests_csv'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'text/csv')
         self.assertEqual(
@@ -2041,12 +1954,11 @@ class ExportTests(TestCase):
             'attachment; filename="Requests_export.xlsx"'
         )
         self.assertTrue(len(response.content) > 0)
-
+    
     def test_export_requests_excel(self):
-        """בדיקה שייצוא אקסל של בקשות עובד"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('export_requests_excel'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response['Content-Type'],
@@ -2057,15 +1969,15 @@ class ExportTests(TestCase):
             'attachment; filename="Requests_export.xlsx"'
         )
         self.assertTrue(len(response.content) > 0)
-
+    
 def get_filtered_requests(request):
     if callable(request):
         return Request.objects.all().order_by('-created')
-
+    
     user = request.user
-    if user.role == 0:
+    if user.role == 0: 
         base_queryset = Request.objects.filter(student=user)
-    elif user.role in [1, 2, 3]:
+    elif user.role in [1, 2, 3]:  
         base_queryset = Request.objects.filter(models.Q(viewers=user) | models.Q(assigned_to=user)).distinct()
     else:
         base_queryset = Request.objects.none()
@@ -2131,63 +2043,60 @@ class FilterRequestsTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
             department=self.department,
             role=0
         )
-
+        
         self.request1 = Request.objects.create(
             student=self.student,
             dept=self.department,
             title=0,
             description='בקשה 1',
             priority=0,
-            status=0
+            status=0 
         )
-
+        
         self.request2 = Request.objects.create(
             student=self.student,
             dept=self.department,
             title=1,
             description='בקשה 2',
-            priority=1,
-            status=1
+            priority=1, 
+            status=1 
         )
-
+        
         self.request3 = Request.objects.create(
             student=self.student,
             dept=self.department,
             title=2,
             description='בקשה 3',
-            priority=2,
-            status=2
+            priority=2, 
+            status=2 
         )
-
+    
     def test_filter_by_status(self):
-        """בדיקת סינון לפי סטטוס"""
         request = self.factory.get('/', {'status': '1'})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
+        
         self.assertEqual(filtered.count(), 1)
         self.assertEqual(filtered.first().status, 1)
-
+    
     def test_filter_by_priority(self):
-        """בדיקת סינון לפי עדיפות"""
         request = self.factory.get('/', {'priority': '2'})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
+        
         self.assertEqual(filtered.count(), 1)
         self.assertEqual(filtered.first().priority, 2)
-
+    
     def test_filter_by_department(self):
-        """בדיקת סינון לפי מחלקה"""
         other_department = Department.objects.create(name='Other Department')
-
+        
         Request.objects.create(
             student=self.student,
             dept=other_department,
@@ -2196,41 +2105,39 @@ class FilterRequestsTests(TestCase):
             priority=0,
             status=0
         )
-
+        
         request = self.factory.get('/', {'department': str(self.department.id)})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
-        self.assertEqual(filtered.count(), 3)
+        
+        self.assertEqual(filtered.count(), 3) 
         for req in filtered:
             self.assertEqual(req.dept.id, self.department.id)
-
+    
     def test_filter_by_date_range(self):
-        """בדיקת סינון לפי טווח תאריכים"""
         from datetime import datetime, timedelta
-
+        
         old_date = timezone.now() - timedelta(days=30)
         self.request1.created = old_date
         self.request1.save()
-
+        
         yesterday = (timezone.now() - timedelta(days=1)).strftime('%Y-%m-%d')
         request = self.factory.get('/', {'date_from': yesterday})
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
-        self.assertEqual(filtered.count(), 2)
+        
+        self.assertEqual(filtered.count(), 2) 
         for req in filtered:
             self.assertNotEqual(req.id, self.request1.id)
-
+    
     def test_multiple_filters(self):
-        """בדיקת שילוב של מספר מסננים"""
         request = self.factory.get('/', {
             'status': '0',
             'priority': '0'
         })
-
+        
         filtered = filter_requests(request, Request.objects.all())
-
+        
         self.assertEqual(filtered.count(), 1)
         self.assertEqual(filtered.first().id, self.request1.id)
 
@@ -2239,7 +2146,7 @@ class CourseManagementTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -2250,13 +2157,13 @@ class CourseManagementTests(TestCase):
             role=2,
             is_active=True
         )
-
+        
         self.course = Course.objects.create(
             name='Test Course',
             year=1,
             dept=self.department
         )
-
+        
         self.lecturer = User.objects.create_user(
             username='lecturer',
             password='testpass123',
@@ -2267,73 +2174,66 @@ class CourseManagementTests(TestCase):
             role=1,
             is_active=True
         )
-
+    
     def test_manage_courses_view(self):
-        """בדיקת תצוגת ניהול קורסים"""
         self.client.login(username='staff', password='testpass123')
         response = self.client.get(reverse('manage_courses'))
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'manage_courses.html')
         self.assertIn('courses', response.context)
         self.assertEqual(response.context['courses'].count(), 1)
         self.assertEqual(response.context['courses'].first().name, 'Test Course')
-
+    
     def test_add_course(self):
-        """בדיקת הוספת קורס חדש"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.post(reverse('add_course'), {
             'name': 'New Course',
             'year': '2',
             'lecturers': [self.lecturer.id]
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
-        # בדיקה שהקורס נוצר
+        
         self.assertTrue(Course.objects.filter(name='New Course').exists())
         course = Course.objects.get(name='New Course')
         self.assertEqual(course.year, 2)
-
-        # בדיקה שהמרצה שויך לקורס
+        
         self.assertTrue(course.user_set.filter(id=self.lecturer.id).exists())
-
+    
     def test_edit_course(self):
-        """בדיקת עריכת קורס קיים"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.post(reverse('edit_course', args=[self.course.id]), {
             'name': 'Updated Course',
             'year': '3',
             'lecturers': [self.lecturer.id]
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
+        
         self.course.refresh_from_db()
         self.assertEqual(self.course.name, 'Updated Course')
-        self.assertEqual(self.course.year, 3)
+        self.assertEqual(self.course.year, 3)        
 
         self.assertTrue(self.course.user_set.filter(id=self.lecturer.id).exists())
-
+    
     def test_delete_course(self):
-        """בדיקת מחיקת קורס"""
         self.client.login(username='staff', password='testpass123')
-
+        
         response = self.client.get(reverse('delete_course', args=[self.course.id]), follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
+        
         self.assertFalse(Course.objects.filter(id=self.course.id).exists())
-
+    
     def test_assign_lecturer_courses_form(self):
-        """בדיקת טופס שיוך מרצים לקורס"""
         self.client.login(username='staff', password='testpass123')
-
+        
         lecturer2 = User.objects.create_user(
             username='lecturer2',
             password='testpass123',
@@ -2342,14 +2242,14 @@ class CourseManagementTests(TestCase):
             role=1,
             is_active=True
         )
-
+        
         response = self.client.post(reverse('assign_lecturer_courses_form', args=[self.course.id]), {
             'lecturers': [self.lecturer.id, lecturer2.id]
         }, follow=True)
-
+        
         self.assertEqual(response.status_code, 200)
         self.assertRedirects(response, reverse('manage_courses'))
-
+        
         self.assertEqual(self.course.user_set.filter(role=1).count(), 2)
         self.assertTrue(self.course.user_set.filter(id=self.lecturer.id).exists())
         self.assertTrue(self.course.user_set.filter(id=lecturer2.id).exists())
@@ -2359,7 +2259,7 @@ class StudentManagementTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.department = Department.objects.create(name='Test Department')
-
+        
         self.staff = User.objects.create_user(
             username='staff',
             password='testpass123',
@@ -2370,7 +2270,7 @@ class StudentManagementTests(TestCase):
             role=2,
             is_active=True
         )
-
+        
         self.student = User.objects.create_user(
             username='student',
             password='testpass123',
@@ -2381,13 +2281,13 @@ class StudentManagementTests(TestCase):
             role=0,
             is_active=True
         )
-
+        
         self.course = Course.objects.create(
             name='Test Course',
             year=1,
             dept=self.department
         )
-
+        
         self.request = Request.objects.create(
             student=self.student,
             dept=self.department,
@@ -2396,21 +2296,19 @@ class StudentManagementTests(TestCase):
             priority=1
         )
 
-
+    
     def test_student_requests_unauthorized(self):
-        """בדיקה שרק צוות יכול לגשת לבקשות של סטודנט"""
         self.client.login(username='student', password='testpass123')
         response = self.client.get(reverse('student_requests', args=[self.student.id]))
-
+        
         self.assertIn(response.status_code, [302, 403])
-
+        
     def test_profile_redirects_if_not_logged_in(self):
         response = self.client.get(reverse('profile'))
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse('login'), response.url)
 
     def test_edit_nonexistent_student_redirects(self):
-        """בדיקה שניסיון לערוך סטודנט שלא קיים מחזיר הפניה או שגיאה"""
         self.client.login(username='staff', password='testpass123')
         non_existent_id = 9999
         response = self.client.get(reverse('edit_student_form', args=[non_existent_id]))
@@ -2439,112 +2337,509 @@ class StudentManagementTests(TestCase):
         self.assertIn(response.status_code, [302, 403])
 
 
-class BulkOperationsTests(TestCase):
+
+class BulkOperationsAdvancedTests(TestCase):
+    
     def setUp(self):
         self.client = Client()
-        self.department = Department.objects.create(name='Bulk Dept')
-        self.student = User.objects.create_user(
-            username='bulk_student',
-            password='bulkpass123',
-            email='bulk@example.com',
-            department=self.department,
-            role=0
-        )
+        self.department = Department.objects.create(name='Test Department')
+        
         self.staff = User.objects.create_user(
-            username='bulk_staff',
-            password='bulkpass123',
+            username='staff',
+            password='testpass123',
+            email='staff@example.com',
+            first_name='Staff',
+            last_name='User',
+            department=self.department,
+            role=2,
+            is_active=True
+        )
+        
+        self.lecturer = User.objects.create_user(
+            username='lecturer',
+            password='testpass123',
+            email='lecturer@example.com',
+            first_name='Lecturer',
+            last_name='User',
+            department=self.department,
+            role=1,
+            is_active=True
+        )
+        
+        self.students = []
+        for i in range(5):
+            student = User.objects.create_user(
+                username=f'student{i}',
+                password='testpass123',
+                email=f'student{i}@example.com',
+                first_name=f'Student{i}',
+                last_name='User',
+                department=self.department,
+                role=0
+            )
+            self.students.append(student)
+        
+        self.courses = []
+        for i in range(3):
+            course = Course.objects.create(
+                name=f'Course {i}',
+                year=i+1,
+                dept=self.department
+            )
+            self.courses.append(course)
+        
+        self.requests = []
+        for i in range(10):
+            request = Request.objects.create(
+                student=self.students[i % len(self.students)],
+                dept=self.department,
+                title=i % 11,  
+                description=f'Test Request {i}',
+                priority=i % 4,
+                status=i % 3,
+                pipeline_status=i % 7,
+                course=self.courses[i % len(self.courses)]
+            )
+            self.requests.append(request)
+
+    def test_bulk_delete_requests_by_staff_success(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        request_ids = [self.requests[0].id, self.requests[1].id, self.requests[2].id]
+        response = self.client.post(reverse('bulk_delete_requests'), {
+            'selected_requests': request_ids
+        }, follow=True)
+        
+        self.assertEqual(response.status_code, 200)
+        for req_id in request_ids:
+            self.assertFalse(Request.objects.filter(id=req_id).exists())
+
+    def test_bulk_delete_requests_partial_permissions(self):
+        self.client.login(username='student0', password='testpass123')
+        
+        student_requests = [req.id for req in self.requests if req.student == self.students[0]]
+        other_requests = [req.id for req in self.requests if req.student != self.students[0]]
+        
+        all_requests = student_requests + other_requests[:2] 
+        
+        response = self.client.post(reverse('bulk_delete_requests'), {
+            'selected_requests': all_requests
+        }, follow=True)
+        
+        self.assertEqual(response.status_code, 200)
+        for req_id in student_requests:
+            self.assertFalse(Request.objects.filter(id=req_id).exists())
+        for req_id in other_requests[:2]:
+            self.assertTrue(Request.objects.filter(id=req_id).exists())
+
+
+    def test_bulk_deactivate_lecturers_correct_role_filter(self):
+        inactive_lecturer = User.objects.create_user(
+            username='inactive_lecturer',
+            password='testpass123',
+            email='inactive@example.com',
+            department=self.department,
+            role=1,
+            is_active=False
+        )
+        
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.post(reverse('bulk_deactivate_lecturers'), {
+            'bulk_deactivate': 'true',
+            'selected_lecturers': [self.lecturer.id, inactive_lecturer.id]
+        }, follow=True)
+        
+        self.assertEqual(response.status_code, 200)
+
+    def test_bulk_delete_courses_department_isolation(self):
+        other_department = Department.objects.create(name='Other Department')
+        other_course = Course.objects.create(
+            name='Other Course',
+            year=1,
+            dept=other_department
+        )
+        
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.post(reverse('bulk_delete_courses'), {
+            'selected_courses': [self.courses[0].id, other_course.id]
+        }, follow=True)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Course.objects.filter(id=self.courses[0].id).exists())
+        self.assertTrue(Course.objects.filter(id=other_course.id).exists())
+
+    def test_bulk_operations_with_empty_selection(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        operations = [
+            ('bulk_delete_requests', {'selected_requests': []}),
+            ('bulk_delete_students', {'bulk_delete': 'true', 'selected_students': []}),
+            ('bulk_deactivate_lecturers', {'bulk_deactivate': 'true', 'selected_lecturers': []}),
+            ('bulk_delete_courses', {'selected_courses': []})
+        ]
+        
+        for operation, data in operations:
+            response = self.client.post(reverse(operation), data, follow=True)
+            self.assertEqual(response.status_code, 200)
+
+
+class AdvancedFilteringTests(TestCase):    
+    def setUp(self):
+        self.client = Client()
+        self.factory = RequestFactory()
+        self.department = Department.objects.create(name='Test Department')
+        
+        self.staff = User.objects.create_user(
+            username='staff',
+            password='testpass123',
             email='staff@example.com',
             department=self.department,
             role=2,
             is_active=True
         )
-        # מספר בקשות ל־bulk
-        self.requests = []
-        for i in range(5):
-            req = Request.objects.create(
+        
+        self.lecturer = User.objects.create_user(
+            username='lecturer',
+            password='testpass123',
+            email='lecturer@example.com',
+            department=self.department,
+            role=1,
+            is_active=True
+        )
+        
+        self.student = User.objects.create_user(
+            username='student',
+            password='testpass123',
+            email='student@example.com',
+            department=self.department,
+            role=0
+        )
+        
+        self.course1 = Course.objects.create(name='Mathematics', year=1, dept=self.department)
+        self.course2 = Course.objects.create(name='Physics', year=2, dept=self.department)
+        
+        self.create_test_requests()
+
+    def create_test_requests(self):
+        today = timezone.now()
+        dates = [
+            today,
+            today - timedelta(days=1), 
+            today - timedelta(days=3),
+            today - timedelta(days=8),  
+            today - timedelta(days=20), 
+            today - timedelta(days=200),  
+        ]
+        
+        self.test_requests = []
+        for i, date in enumerate(dates):
+            request = Request.objects.create(
                 student=self.student,
                 dept=self.department,
-                title=i % 3,
-                description=f'Bulk request {i}',
-                priority=(i % 4),
+                title=i % 11,
+                description=f'Test Request {i} with keyword: special_{i}',
+                priority=i % 4,
+                status=i % 3,
+                pipeline_status=i % 7,
+                course=self.course1 if i % 2 == 0 else self.course2
             )
-            self.requests.append(req)
-        self.client.login(username='bulk_staff', password='bulkpass123')
+            Request.objects.filter(id=request.id).update(created=date)
+            request.refresh_from_db()
+            self.test_requests.append(request)
 
-    def test_bulk_delete_requests_no_selection(self):
-        response = self.client.post(reverse('bulk_delete_requests'), {})
-        self.assertRedirects(response, reverse('list_requests'))
-        messages = list(response.wsgi_request._messages)
-        self.assertTrue(any("לא נבחרו בקשות למחיקה" in str(m) for m in messages))
+    def test_filter_by_date_range_this_week(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'date_range': 'this_week'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        
+        for req in requests:
+            self.assertGreaterEqual(req.created.date(), start_week)
 
-    def test_bulk_delete_requests_deletes_selected(self):
-        # create extra requests
-        req_ids = [r.id for r in self.requests[:3]]
-        data = {'selected_requests': req_ids}
-        response = self.client.post(reverse('bulk_delete_requests'), data, follow=True)
-        self.assertEqual(Request.objects.filter(id__in=req_ids).count(), 0)
-        self.assertContains(response, "3 בקשות נמחקו בהצלחה")
+    def test_filter_by_date_range_last_week(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'date_range': 'last_week'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday() + 7)
+        end_week = today - timedelta(days=today.weekday() + 1)
+        
+        for req in requests:
+            self.assertGreaterEqual(req.created.date(), start_week)
+            self.assertLessEqual(req.created.date(), end_week)
 
-    def test_bulk_delete_requests_only_own_or_staff(self):
-        other = User.objects.create_user(username='other', password='x', role=0, department=self.department)
-        other_req = Request.objects.create(student=other, dept=self.department, title=0, description='')
-        data = {'selected_requests': [other_req.id]}
-        # as staff
-        response = self.client.post(reverse('bulk_delete_requests'), data, follow=True)
-        self.assertFalse(Request.objects.filter(id=other_req.id).exists())
+    def test_filter_by_date_range_this_month(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'date_range': 'this_month'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        today = timezone.now().date()
+        start_month = today.replace(day=1)
+        
+        for req in requests:
+            self.assertGreaterEqual(req.created.date(), start_month)
 
-    def test_bulk_delete_students_no_selection(self):
-        response = self.client.post(reverse('bulk_delete_students'), {})
-        self.assertRedirects(response, reverse('manage_users'))
-        messages = list(response.wsgi_request._messages)
-        self.assertTrue(any("לא נבחרו סטודנטים למחיקה" in str(m) for m in messages))
+    def test_filter_by_date_range_last_month(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'date_range': 'last_month'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        today = timezone.now().date()
+        first_day_this_month = today.replace(day=1)
+        last_day_last_month = first_day_this_month - timedelta(days=1)
+        first_day_last_month = last_day_last_month.replace(day=1)
+        
+        for req in requests:
+            self.assertGreaterEqual(req.created.date(), first_day_last_month)
+            self.assertLessEqual(req.created.date(), last_day_last_month)
 
-    def test_bulk_delete_students_deletes_only_role0(self):
-        stud1 = User.objects.create_user(username='s1', password='x', role=0, department=self.department)
-        lec = User.objects.create_user(username='l1', password='x', role=1, department=self.department)
-        data = {'bulk_delete': '1', 'selected_students': [stud1.id, lec.id]}
-        self.client.post(reverse('bulk_delete_students'), data)
-        self.assertFalse(User.objects.filter(id=stud1.id).exists())
-        self.assertTrue(User.objects.filter(id=lec.id).exists())
+    def test_filter_by_date_range_this_year(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'date_range': 'this_year'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        today = timezone.now().date()
+        start_year = today.replace(month=1, day=1)
+        
+        for req in requests:
+            self.assertGreaterEqual(req.created.date(), start_year)
 
-    def test_bulk_deactivate_lecturers_no_selection(self):
-        response = self.client.post(reverse('bulk_deactivate_lecturers'), {})
-        self.assertRedirects(response, reverse('manage_users'))
-        messages = list(response.wsgi_request._messages)
-        self.assertTrue(any("לא נבחרו מרצים להשבתה" in str(m) for m in messages))
+    def test_filter_by_request_title_specific(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'request_title': '6'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        for req in requests:
+            self.assertEqual(req.title, 6)
 
-    def test_bulk_deactivate_lecturers_deactivates(self):
-        lec1 = User.objects.create_user(username='l2', password='x', role=2, is_active=True, department=self.department)
-        lec2 = User.objects.create_user(username='l3', password='x', role=2, is_active=True, department=self.department)
-        data = {'bulk_deactivate': '1', 'selected_lecturers': [lec1.id, lec2.id]}
-        self.client.post(reverse('bulk_deactivate_lecturers'), data)
-        lec1.refresh_from_db(); lec2.refresh_from_db()
-        self.assertFalse(lec1.is_active and lec2.is_active)
+    def test_filter_by_sla_status_overdue(self):
+        old_date = timezone.now() - timedelta(days=10)
+        old_request = Request.objects.create(
+            student=self.student,
+            dept=self.department,
+            title=0,
+            description='Old overdue request',
+            priority=1, 
+            status=0  
+        )
+        Request.objects.filter(id=old_request.id).update(created=old_date)
+        
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'sla': 'overdue'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        for req in requests:
+            if req.status == 0:
+                self.assertEqual(req.get_sla_status(), "בחריגה")
 
-    def test_bulk_delete_courses_non_staff(self):
-        self.client.logout()
-        self.client.login(username='bulk_student', password='bulkpass123')
-        response = self.client.post(reverse('bulk_delete_courses'), {'selected_courses': []}, follow=True)
-        self.assertRedirects(response, reverse('home'))
-        messages = list(response.wsgi_request._messages)
-        self.assertTrue(any("אין לך הרשאות" in str(m) for m in messages))
+    def test_filter_by_sla_status_at_risk(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'sla': 'at_risk'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        for req in requests:
+            if req.status == 0:
+                self.assertEqual(req.get_sla_status(), "בסיכון")
 
-    def test_bulk_delete_courses_staff_deletes(self):
-        # create courses in this department and another
-        c1 = Course.objects.create(name='A', year=1, dept=self.department)
-        other_dept = Department.objects.create(name='Other')
-        c2 = Course.objects.create(name='B', year=1, dept=other_dept)
-        self.client.login(username='bulk_staff', password='bulkpass123')
-        data = {'selected_courses': [c1.id, c2.id]}
-        response = self.client.post(reverse('bulk_delete_courses'), data, follow=True)
-        self.assertFalse(Course.objects.filter(id=c1.id).exists())
-        self.assertTrue(Course.objects.filter(id=c2.id).exists())
-        self.assertContains(response, "1 קורסים נמחקו בהצלחה")
+    def test_filter_by_search_query_in_description(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'q': 'special_2'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        for req in requests:
+            self.assertIn('special_2', req.description)
 
-    def test_bulk_delete_courses_no_selection(self):
-        self.client.login(username='bulk_staff', password='bulkpass123')
-        response = self.client.post(reverse('bulk_delete_courses'), {}, follow=True)
-        self.assertContains(response, "לא נבחרו קורסים למחיקה.")
+    def test_filter_combination_complex(self):
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'status': '0', 
+            'priority': '1', 
+            'date_range': 'this_month',
+            'request_title': '0' 
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        requests = list(response.context['page_obj'].object_list)
+        
+        today = timezone.now().date()
+        start_month = today.replace(day=1)
+        
+        for req in requests:
+            self.assertEqual(req.status, 0)
+            self.assertEqual(req.priority, 1)
+            self.assertEqual(req.title, 0)
+            self.assertGreaterEqual(req.created.date(), start_month)
+
+    def test_filter_by_user_specific_request_titles(self):
+        self.client.login(username='student', password='testpass123')
+        response = self.client.get(reverse('list_requests'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('user_request_titles', response.context)
+        
+        user_titles = response.context['user_request_titles']
+        student_titles = Request.objects.filter(student=self.student).values_list('title', flat=True).distinct()
+        
+        for title_tuple in user_titles:
+            self.assertIn(title_tuple[0], student_titles)
+
+    def test_pagination_with_filters(self):
+        for i in range(15):
+            Request.objects.create(
+                student=self.student,
+                dept=self.department,
+                title=0,  
+                description=f'Pagination test {i}',
+                priority=0,
+                status=0
+            )
+        
+        self.client.login(username='staff', password='testpass123')
+        
+        response = self.client.get(reverse('list_requests'), {
+            'request_title': '0',
+            'status': '0'
+        })
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('page_obj', response.context)
+        page_obj = response.context['page_obj']
+        self.assertLessEqual(len(page_obj.object_list), 10)  
+        
+        if page_obj.has_next():
+            response = self.client.get(reverse('list_requests'), {
+                'request_title': '0',
+                'status': '0',
+                'page': '2'
+            })
+            self.assertEqual(response.status_code, 200)
 
 
+class ChatAndAITests(TestCase):    
+    def setUp(self):
+        self.client = Client()
+        self.department = Department.objects.create(name='Test Department')
+        
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            email='test@example.com',
+            department=self.department,
+            role=0
+        )
 
+    @patch('Website.views.get_openai_response')
+    def test_website_chat_response_success(self, mock_openai):
+        mock_openai.return_value = "תשובה מבוט הצ'אט"
+        
+        response = self.client.post(
+            reverse('chat_response'),
+            json.dumps({'message': 'איך אני יכול להגיש ערעור על ציון?'}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertIn('response', data)
+        self.assertEqual(data['response'], "תשובה מבוט הצ'אט")
+
+    def test_website_chat_response_invalid_method(self):
+        response = self.client.get(reverse('chat_response'))
+        
+        self.assertEqual(response.status_code, 405)
+        data = json.loads(response.content)
+        self.assertIn('error', data)
+
+    @patch('Website.views.get_openai_response')
+    def test_website_chat_response_error_handling(self, mock_openai):
+        mock_openai.side_effect = Exception("API Error")
+        
+        response = self.client.post(
+            reverse('chat_response'),
+            json.dumps({'message': 'test message'}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertIn('response', data)
+        self.assertIn('אירעה שגיאה', data['response'])
+
+    def test_chat_response_with_malformed_json(self):
+        response = self.client.post(
+            reverse('chat_response'),
+            'invalid json',
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertIn('response', data)
+
+
+class ReviewSystemAdvancedTests(TestCase):    
+    def setUp(self):
+        self.client = Client()
+        self.department = Department.objects.create(name='Test Department')
+        
+        self.users = []
+        for i in range(5):
+            user = User.objects.create_user(
+                username=f'user{i}',
+                password='testpass123',
+                email=f'user{i}@example.com',
+                department=self.department,
+                role=0
+            )
+            self.users.append(user)

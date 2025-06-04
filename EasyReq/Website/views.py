@@ -128,14 +128,42 @@ def profile_view(request):
     user = request.user
 
     if request.method == 'POST':
-        # תמונת פרופיל
-        if 'profile_pic' in request.FILES:
-            user.profile_pic = request.FILES['profile_pic']
-            user.save()
-            messages.success(request, "תמונת הפרופיל עודכנה בהצלחה!")
+        action = request.POST.get('action')
 
-        # שינוי סיסמה
-        if 'old_password' in request.POST:
+        if action == 'update_email' and user.role == 0:  # Students only
+            new_email = request.POST.get('new_email')
+
+            # Validate email format
+            pattern = r'^[\w\.-]+@(ac\.sce\.ac\.il|sce\.ac\.il)$'
+            if not re.match(pattern, new_email):
+                messages.error(request, "עליך להזין מייל מכללתי בלבד")
+                return redirect('profile')
+
+            # Check if email is already in use
+            if User.objects.filter(email=new_email).exclude(id=user.id).exists():
+                messages.error(request, "כתובת האימייל כבר בשימוש")
+                return redirect('profile')
+
+            # Update email immediately
+            user.email = new_email
+            user.save()
+            messages.success(request, "כתובת האימייל עודכנה בהצלחה!")
+
+        elif action == 'update_courses' and user.role == 1:  # Lecturers only
+            selected_course_ids = request.POST.getlist('selected_courses')
+
+            # Clear current courses and add selected ones
+            user.courses.clear()
+            if selected_course_ids:
+                valid_courses = Course.objects.filter(
+                    id__in=selected_course_ids,
+                    dept=user.department
+                )
+                user.courses.add(*valid_courses)
+
+            messages.success(request, "רשימת הקורסים עודכנה בהצלחה!")
+
+        elif action == 'update_password':
             password_form = PasswordChangeForm(user, request.POST)
             if password_form.is_valid():
                 user = password_form.save()
@@ -144,16 +172,27 @@ def profile_view(request):
             else:
                 for field, errors in password_form.errors.items():
                     for error in errors:
-                        messages.error(request, f"{field}: {error}")
+                        messages.error(request, f"{error}")
+
+        elif 'profile_pic' in request.FILES:
+            user.profile_pic = request.FILES['profile_pic']
+            user.save()
+            messages.success(request, "תמונת הפרופיל עודכנה בהצלחה!")
 
         return redirect('profile')
 
     else:
         password_form = PasswordChangeForm(user)
 
+    # Get all courses in department for lecturers
+    all_department_courses = []
+    if user.role == 1 and user.department:
+        all_department_courses = Course.objects.filter(dept=user.department).order_by('year', 'name')
+
     return render(request, 'profile.html', {
         'user': user,
-        'password_form': password_form
+        'password_form': password_form,
+        'all_department_courses': all_department_courses,
     })
   
 def create_request(request):

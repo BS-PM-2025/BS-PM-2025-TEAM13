@@ -1,0 +1,628 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}עריכת ביקורת{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* Force override all existing styles */
+    body {
+        background-color: #eaf0fb !important;
+        font-family: 'Calibri', sans-serif !important;
+        direction: rtl !important;
+    }
+
+    .edit-container {
+        max-width: 1200px !important;
+        margin: 20px auto !important;
+        background: #fff !important;
+        border-radius: 20px !important;
+        padding: 40px !important;
+        box-shadow: 0 12px 40px rgba(46, 70, 122, 0.7) !important;
+        min-height: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .edit-header {
+        font-size: 28px !important;
+        font-weight: bold !important;
+        color: #2d6cdf !important;
+        margin-bottom: 30px !important;
+        text-align: center !important;
+        background: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-bottom: none !important;
+    }
+
+    .edit-header h1 {
+        margin: 0 0 15px 0 !important;
+        font-size: 28px !important;
+        font-weight: bold !important;
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+        text-shadow: none !important;
+    }
+
+    .edit-header p {
+        margin: 0 !important;
+        color: #2d6cdf !important;
+        font-size: 1.2rem !important;
+        opacity: 1 !important;
+    }
+
+    .current-rating {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+        padding: 30px 40px !important;
+        border-radius: 15px !important;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+        text-align: center !important;
+        border: 1px solid #e9ecef !important;
+        margin-bottom: 30px !important;
+    }
+
+    .current-rating h4 {
+        color: #2d6cdf !important;
+        font-weight: 700 !important;
+        margin-bottom: 15px !important;
+    }
+
+    .current-rating .stars {
+        color: #ffc107 !important;
+        font-size: 2rem !important;
+        margin: 15px 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+        gap: 5px !important;
+    }
+
+    .current-rating .star.empty {
+        color: #ddd !important;
+    }
+
+    .current-rating p {
+        color: #666 !important;
+        font-size: 1.1rem !important;
+        margin: 10px 0 0 0 !important;
+    }
+
+    .form-section {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+        overflow: hidden !important;
+        border: 1px solid #f2f4f8 !important;
+        backdrop-filter: none !important;
+        margin-bottom: 30px !important;
+    }
+
+    .section-header {
+        background: #f2f4f8 !important;
+        padding: 20px 25px !important;
+        border-bottom: 1px solid #dee2e6 !important;
+    }
+
+    .section-title {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        color: #2d6cdf !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+    }
+
+    .section-title i {
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+    }
+
+    .form-content {
+        padding: 30px !important;
+    }
+
+    .star-rating {
+        display: flex !important;
+        justify-content: center !important;
+        gap: 5px !important;
+        margin-bottom: 25px !important;
+        padding: 15px !important;
+        background: #f8f9fa !important;
+        border-radius: 12px !important;
+        border: 1px solid #e9ecef !important;
+        flex-direction: row-reverse !important;
+    }
+
+    .star-rating input {
+        display: none !important;
+    }
+
+    .star-rating label {
+        font-size: 2.5rem !important;
+        color: #ddd !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        filter: none !important;
+        user-select: none !important;
+    }
+
+    .star-rating label:hover {
+        color: #ffc107 !important;
+        transform: scale(1.15) !important;
+        text-shadow: 0 0 15px rgba(255, 193, 7, 0.8) !important;
+    }
+
+    .form-group {
+        margin-bottom: 20px !important;
+    }
+
+    .form-group label {
+        display: block !important;
+        margin-bottom: 8px !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        font-size: 1rem !important;
+    }
+
+    .form-control {
+        width: 100% !important;
+        padding: 12px 15px !important;
+        border: 2px solid #e9ecef !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+        font-family: inherit !important;
+        box-sizing: border-box !important;
+        background: #fff !important;
+    }
+
+    .form-control:focus {
+        outline: none !important;
+        border-color: #2d6cdf !important;
+        box-shadow: 0 0 0 3px rgba(45, 108, 223, 0.1) !important;
+        background: #fff !important;
+        transform: none !important;
+    }
+
+    textarea.form-control {
+        resize: none !important;
+        min-height: 120px !important;
+        max-height: 120px !important;
+        height: 120px !important;
+        overflow-y: auto !important;
+        line-height: 1.5 !important;
+    }
+
+    .btn {
+        padding: 12px 30px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 16px !important;
+        position: relative !important;
+        overflow: visible !important;
+        margin-left: 10px !important;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #2d6cdf 0%, #4285f4 100%) !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(45, 108, 223, 0.3) !important;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(45, 108, 223, 0.4) !important;
+        color: white !important;
+        text-decoration: none !important;
+    }
+
+    .btn-secondary {
+        background: #6c757d !important;
+        color: white !important;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px) !important;
+        color: white !important;
+        text-decoration: none !important;
+    }
+
+    .btn-danger {
+        background: #dc3545 !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4) !important;
+        color: white !important;
+        text-decoration: none !important;
+    }
+
+    .actions {
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        margin-top: 30px !important;
+        padding-top: 20px !important;
+        border-top: 1px solid #f0f0f0 !important;
+        gap: 15px !important;
+    }
+
+    .delete-section {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+        overflow: hidden !important;
+        border: 1px solid #f2f4f8 !important;
+        backdrop-filter: none !important;
+    }
+
+    .delete-section .section-header {
+        background: #fdeaea !important;
+        border-bottom: 1px solid #f5c6cb !important;
+    }
+
+    .delete-section .section-title {
+        color: #dc3545 !important;
+    }
+
+    .delete-section .section-title i {
+        color: #dc3545 !important;
+    }
+
+    .delete-section .form-content {
+        text-align: center !important;
+    }
+
+    .delete-section h4 {
+        color: #dc3545 !important;
+        margin-bottom: 15px !important;
+        font-weight: 700 !important;
+    }
+
+    .delete-section p {
+        color: #666 !important;
+        margin-bottom: 25px !important;
+        font-size: 1.1rem !important;
+    }
+
+    .alert {
+        padding: 15px 20px !important;
+        border-radius: 8px !important;
+        margin-bottom: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        backdrop-filter: none !important;
+        position: relative !important;
+        overflow: visible !important;
+    }
+
+    .alert-success {
+        background: #d4edda !important;
+        color: #155724 !important;
+        border: 1px solid #c3e6cb !important;
+    }
+
+    .alert-error {
+        background: #f8d7da !important;
+        color: #721c24 !important;
+        border: 1px solid #f5c6cb !important;
+    }
+
+    .alert-info {
+        background: #cce7ff !important;
+        color: #004085 !important;
+        border: 1px solid #bee5eb !important;
+    }
+
+    .alert i {
+        font-size: 1.1rem !important;
+    }
+
+    /* Mobile fixes */
+    @media (max-width: 768px) {
+        .edit-container {
+            padding: 20px !important;
+            margin: 10px !important;
+        }
+
+        .edit-header h1 {
+            font-size: 24px !important;
+        }
+
+        .star-rating label {
+            font-size: 2rem !important;
+        }
+
+        .form-content {
+            padding: 20px !important;
+        }
+
+        textarea.form-control {
+            min-height: 100px !important;
+            max-height: 100px !important;
+            height: 100px !important;
+        }
+
+        .actions {
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+
+        .btn {
+            margin-left: 0 !important;
+            width: 100% !important;
+            justify-content: center !important;
+        }
+    }
+</style>
+
+<div class="edit-container">
+    <div class="edit-header">
+        <h1><i class="fas fa-edit"></i> עריכת ביקורת</h1>
+        <p>עדכן את הדירוג וההודעה שלך</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {% if message.tags == 'success' %}
+                    <i class="fas fa-check-circle"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="fas fa-exclamation-circle"></i>
+                {% else %}
+                    <i class="fas fa-info-circle"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="current-rating">
+        <h4>הדירוג הנוכחי שלך:</h4>
+        <div class="stars" data-rating="{{ review.rating }}">
+            {% for i in "12345" %}
+                <span class="star">★</span>
+            {% endfor %}
+        </div>
+        <p>{{ review.rating }} מתוך 5 כוכבים</p>
+    </div>
+
+    <div class="form-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-star"></i>
+                עריכת הדירוג
+            </h3>
+        </div>
+
+        <div class="form-content">
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label>דירוג חדש</label>
+                    <div class="star-rating">
+                        <input type="radio" name="rating" value="5" id="star5" {% if review.rating == 5 %}checked{% endif %}>
+                        <label for="star5" data-rating="5">★</label>
+                        <input type="radio" name="rating" value="4" id="star4" {% if review.rating == 4 %}checked{% endif %}>
+                        <label for="star4" data-rating="4">★</label>
+                        <input type="radio" name="rating" value="3" id="star3" {% if review.rating == 3 %}checked{% endif %}>
+                        <label for="star3" data-rating="3">★</label>
+                        <input type="radio" name="rating" value="2" id="star2" {% if review.rating == 2 %}checked{% endif %}>
+                        <label for="star2" data-rating="2">★</label>
+                        <input type="radio" name="rating" value="1" id="star1" {% if review.rating == 1 %}checked{% endif %}>
+                        <label for="star1" data-rating="1">★</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">הודעה</label>
+                    <textarea name="message" id="message" class="form-control"
+                            placeholder="עדכן את ההודעה שלך...">{{ review.message|default:"" }}</textarea>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        שמור שינויים
+                    </button>
+                    <a href="{% url 'rating_page' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i>
+                        ביטול
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="delete-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-trash"></i>
+                מחיקת ביקורת
+            </h3>
+        </div>
+        
+        <div class="form-content">
+            <h4>מחיקת ביקורת</h4>
+            <p>אם תרצה להסיר את הביקורת שלך לחלוטין</p>
+            <form method="POST" action="{% url 'delete_review' %}"
+                  onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הביקורת? פעולה זו לא ניתנת לביטול.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i>
+                    מחק ביקורת
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize current rating display
+    function updateCurrentRatingDisplay() {
+        const currentRatingElement = document.querySelector('.current-rating .stars');
+        if (currentRatingElement) {
+            const rating = parseInt(currentRatingElement.getAttribute('data-rating')) || 0;
+            const stars = currentRatingElement.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.remove('empty');
+                    star.style.color = '#ffc107';
+                } else {
+                    star.classList.add('empty');
+                    star.style.color = '#ddd';
+                }
+            });
+        }
+    }
+
+    // Call on page load
+    updateCurrentRatingDisplay();
+
+    const stars = document.querySelectorAll('.star-rating label');
+    const ratingInputs = document.querySelectorAll('.star-rating input');
+
+    // Clear previous event listeners
+    stars.forEach(star => {
+        star.replaceWith(star.cloneNode(true));
+    });
+
+    // Re-select after cloning
+    const newStars = document.querySelectorAll('.star-rating label');
+    const newRatingInputs = document.querySelectorAll('.star-rating input');
+
+    // Set initial state based on current rating
+    function updateStarRatingDisplay() {
+        const checkedInput = document.querySelector('.star-rating input:checked');
+        if (checkedInput) {
+            const rating = parseInt(checkedInput.value);
+            updateStarColors(rating);
+        }
+    }
+
+    // Call on page load
+    updateStarRatingDisplay();
+
+    newStars.forEach((star, index) => {
+        star.addEventListener('click', function(e) {
+            e.preventDefault();
+            const rating = parseInt(this.getAttribute('data-rating'));
+            
+            // Check the corresponding radio button
+            const radioButton = document.getElementById(`star${rating}`);
+            if (radioButton) {
+                radioButton.checked = true;
+            }
+            
+            // Update star colors
+            updateStarColors(rating);
+        });
+
+        star.addEventListener('mouseover', function() {
+            const rating = parseInt(this.getAttribute('data-rating'));
+            highlightStars(rating);
+        });
+
+        star.addEventListener('mouseout', function() {
+            const checkedInput = document.querySelector('.star-rating input:checked');
+            if (checkedInput) {
+                const checkedRating = parseInt(checkedInput.value);
+                updateStarColors(checkedRating);
+            } else {
+                resetStars();
+            }
+        });
+    });
+
+    function updateStarColors(rating) {
+        newStars.forEach((star, index) => {
+            const starRating = parseInt(star.getAttribute('data-rating'));
+            if (starRating <= rating) {
+                star.style.color = '#ffc107';
+                star.style.textShadow = '0 0 10px rgba(255, 193, 7, 0.5)';
+            } else {
+                star.style.color = '#ddd';
+                star.style.textShadow = '';
+            }
+        });
+    }
+
+    function highlightStars(rating) {
+        newStars.forEach((star, index) => {
+            const starRating = parseInt(star.getAttribute('data-rating'));
+            if (starRating <= rating) {
+                star.style.color = '#ffc107';
+                star.style.transform = 'scale(1.15)';
+                star.style.textShadow = '0 0 15px rgba(255, 193, 7, 0.8)';
+            } else {
+                star.style.color = '#ddd';
+                star.style.transform = 'scale(1)';
+                star.style.textShadow = '';
+            }
+        });
+    }
+
+    function resetStars() {
+        newStars.forEach(star => {
+            star.style.color = '#ddd';
+            star.style.transform = 'scale(1)';
+            star.style.textShadow = '';
+        });
+    }
+
+    // Keep selected rating highlighted when input changes
+    newRatingInputs.forEach((input) => {
+        input.addEventListener('change', function() {
+            const rating = parseInt(this.value);
+            updateStarColors(rating);
+        });
+    });
+
+    // Form validation
+    const form = document.querySelector('form[method="POST"]:not([action*="delete_review"])');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const ratingSelected = document.querySelector('.star-rating input:checked');
+            if (!ratingSelected) {
+                e.preventDefault();
+                alert('אנא בחר דירוג לפני שמירת השינויים');
+                return false;
+            }
+        });
+    }
+
+    // Prevent mobile zoom on input focus
+    const inputs = document.querySelectorAll('input, textarea, select');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            // Maintain stable layout on focus
+            this.style.fontSize = '16px';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1050 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load request_extras %}
+
+{% block title %}דירוג האתר{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* Force override all existing styles */
+    body {
+        background-color: #eaf0fb !important;
+        font-family: 'Calibri', sans-serif !important;
+        direction: rtl !important;
+    }
+
+    .rating-container {
+        max-width: 1200px !important;
+        margin: 20px auto !important;
+        background: #fff !important;
+        border-radius: 20px !important;
+        padding: 40px !important;
+        box-shadow: 0 12px 40px rgba(46, 70, 122, 0.7) !important;
+        min-height: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .page-header {
+        font-size: 28px !important;
+        font-weight: bold !important;
+        color: #2d6cdf !important;
+        margin-bottom: 30px !important;
+        text-align: center !important;
+        background: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .page-header h1 {
+        margin: 0 0 15px 0 !important;
+        font-size: 28px !important;
+        font-weight: bold !important;
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+        text-shadow: none !important;
+    }
+
+    .page-header p {
+        margin: 0 !important;
+        color: #2d6cdf !important;
+        font-size: 1.2rem !important;
+        opacity: 1 !important;
+    }
+
+    .rating-stats {
+        display: flex !important;
+        justify-content: center !important;
+        gap: 40px !important;
+        margin-bottom: 30px !important;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%) !important;
+        padding: 30px 40px !important;
+        border-radius: 15px !important;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+        text-align: center !important;
+        transition: transform 0.3s ease !important;
+        border: 1px solid #e9ecef !important;
+        min-width: 200px !important;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px) !important;
+    }
+
+    .stat-number {
+        font-size: 2.5rem !important;
+        font-weight: 800 !important;
+        color: #2d6cdf !important;
+        margin-bottom: 5px !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+    }
+
+    .stat-label {
+        color: #666 !important;
+        font-weight: 500 !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+        font-size: 1rem !important;
+    }
+
+    .overall-rating {
+        text-align: center !important;
+        margin-bottom: 10px !important;
+    }
+
+    .rating-number {
+        font-size: 3rem !important;
+        font-weight: 800 !important;
+        color: #ffc107 !important;
+        margin-bottom: 10px !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+        filter: none !important;
+    }
+
+    .main-content {
+        display: block !important;
+        margin-bottom: 30px !important;
+    }
+
+    .rating-form-section {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+        overflow: hidden !important;
+        border: 1px solid #f2f4f8 !important;
+        backdrop-filter: none !important;
+        margin-bottom: 30px !important;
+    }
+
+    .reviews-section {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+        overflow: hidden !important;
+        height: fit-content !important;
+        border: 1px solid #f2f4f8 !important;
+        backdrop-filter: none !important;
+    }
+
+    .section-header {
+        background: #f2f4f8 !important;
+        padding: 20px 25px !important;
+        border-bottom: 1px solid #dee2e6 !important;
+    }
+
+    .section-title {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        color: #2d6cdf !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+        cursor: pointer !important;
+    }
+
+    .section-title:hover {
+        color: #1a56c5 !important;
+        transform: none !important;
+    }
+
+    .section-title i {
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+    }
+
+    .form-content {
+        padding: 30px !important;
+        min-height: 300px !important;
+    }
+
+    .star-rating {
+        display: flex !important;
+        justify-content: center !important;
+        gap: 5px !important;
+        margin-bottom: 25px !important;
+        padding: 15px !important;
+        background: #f8f9fa !important;
+        border-radius: 12px !important;
+        border: 1px solid #e9ecef !important;
+    }
+
+    .star-rating input {
+        display: none !important;
+    }
+
+    .star-rating label {
+        font-size: 2.5rem !important;
+        color: #ddd !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        filter: none !important;
+        user-select: none !important;
+    }
+
+    .star-rating label:hover {
+        color: #ffc107 !important;
+        transform: scale(1.15) !important;
+        text-shadow: 0 0 15px rgba(255, 193, 7, 0.8) !important;
+    }
+
+    .star-rating input:checked ~ label,
+    .star-rating input:checked ~ label ~ label {
+        color: #ddd !important;
+    }
+
+    .star-rating input:checked + label,
+    .star-rating input:checked + label ~ label {
+        color: #ffc107 !important;
+        text-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
+    }
+
+    /* Fix for proper star selection from right to left */
+    .star-rating {
+        flex-direction: row-reverse !important;
+    }
+
+    .star-rating input[value="5"]:checked ~ label {
+        color: #ffc107 !important;
+    }
+
+    .star-rating input[value="4"]:checked ~ label:nth-of-type(n+2) {
+        color: #ffc107 !important;
+    }
+
+    .star-rating input[value="3"]:checked ~ label:nth-of-type(n+3) {
+        color: #ffc107 !important;
+    }
+
+    .star-rating input[value="2"]:checked ~ label:nth-of-type(n+4) {
+        color: #ffc107 !important;
+    }
+
+    .star-rating input[value="1"]:checked ~ label:nth-of-type(n+5) {
+        color: #ffc107 !important;
+    }
+
+    .form-group {
+        margin-bottom: 20px !important;
+    }
+
+    .form-group label {
+        display: block !important;
+        margin-bottom: 8px !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        font-size: 1rem !important;
+    }
+
+    .form-control {
+        width: 100% !important;
+        padding: 12px 15px !important;
+        border: 2px solid #e9ecef !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+        font-family: inherit !important;
+        box-sizing: border-box !important;
+        background: #fff !important;
+    }
+
+    .form-control:focus {
+        outline: none !important;
+        border-color: #2d6cdf !important;
+        box-shadow: 0 0 0 3px rgba(45, 108, 223, 0.1) !important;
+        background: #fff !important;
+        transform: none !important;
+    }
+
+    textarea.form-control {
+        resize: none !important;
+        min-height: 120px !important;
+        max-height: 120px !important;
+        height: 120px !important;
+        overflow-y: auto !important;
+        line-height: 1.5 !important;
+    }
+
+    .btn {
+        padding: 12px 30px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 16px !important;
+        position: relative !important;
+        overflow: visible !important;
+    }
+
+    .btn::before {
+        display: none !important;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #2d6cdf 0%, #4285f4 100%) !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(45, 108, 223, 0.3) !important;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(45, 108, 223, 0.4) !important;
+        color: white !important;
+        text-decoration: none !important;
+    }
+
+    .btn-secondary {
+        background: #6c757d !important;
+        color: white !important;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px) !important;
+        color: white !important;
+        text-decoration: none !important;
+    }
+
+    .reviews-list {
+        max-height: 600px !important;
+        overflow-y: auto !important;
+        padding: 20px !important;
+        scrollbar-width: thin !important;
+        direction: ltr !important;
+    }
+
+    /* Content inside should remain RTL */
+    .reviews-list .review-item {
+        direction: rtl !important;
+    }
+
+    .reviews-list::-webkit-scrollbar {
+        width: 8px !important;
+    }
+
+    .reviews-list::-webkit-scrollbar-track {
+        background: #f1f1f1 !important;
+        border-radius: 4px !important;
+    }
+
+    .reviews-list::-webkit-scrollbar-thumb {
+        background: #2d6cdf !important;
+        border-radius: 4px !important;
+    }
+
+    .reviews-list::-webkit-scrollbar-thumb:hover {
+        background: #1a56c5 !important;
+    }
+
+    /* Alternative approach - force scrollbar to right */
+    .reviews-section {
+        overflow: hidden !important;
+    }
+
+    .reviews-list {
+        padding-left: 8px !important;
+        margin-left: -8px !important;
+    }
+
+    .review-item {
+        padding: 30px !important;
+        border-bottom: none !important;
+        transition: all 0.3s ease !important;
+        margin-bottom: 25px !important;
+        border-radius: 16px !important;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+        box-shadow: 0 8px 30px rgba(45, 108, 223, 0.08) !important;
+        border: 2px solid transparent !important;
+        position: relative !important;
+        overflow: hidden !important;
+        animation: none !important;
+    }
+
+    .review-item::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 4px !important;
+        background: linear-gradient(90deg, #2d6cdf, #4285f4) !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    .review-item:hover {
+        transform: translateY(-8px) !important;
+        box-shadow: 0 20px 40px rgba(45, 108, 223, 0.15) !important;
+        border-color: rgba(45, 108, 223, 0.2) !important;
+    }
+
+    .review-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        margin-bottom: 20px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 1px solid rgba(45, 108, 223, 0.1) !important;
+    }
+
+    .reviewer-info {
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
+    }
+
+    .reviewer-avatar {
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #2d6cdf 0%, #4285f4 100%) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: white !important;
+        font-weight: 700 !important;
+        font-size: 20px !important;
+        box-shadow: 0 8px 20px rgba(45, 108, 223, 0.3) !important;
+        border: 3px solid #fff !important;
+    }
+
+    .reviewer-details h4 {
+        margin: 0 0 5px 0 !important;
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+    }
+
+    .reviewer-role {
+        font-size: 0.9rem !important;
+        color: #6c757d !important;
+        font-weight: 500 !important;
+        margin: 2px 0 !important;
+        background: #f8f9fa !important;
+        padding: 4px 10px !important;
+        border-radius: 12px !important;
+        display: inline-block !important;
+        font-style: italic !important;
+    }
+
+    .review-date {
+        font-size: 0.85rem !important;
+        color: #8a8a8a !important;
+        margin: 8px 0 0 0 !important;
+        font-weight: 500 !important;
+    }
+
+    .review-stars {
+        display: flex !important;
+        gap: 3px !important;
+        padding: 10px 15px !important;
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 140, 0, 0.1) 100%) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255, 193, 7, 0.3) !important;
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.1) !important;
+    }
+
+    .review-stars .star {
+        color: #ffc107 !important;
+        font-size: 1.4rem !important;
+        filter: drop-shadow(0 2px 4px rgba(255, 193, 7, 0.3)) !important;
+        transition: transform 0.2s ease !important;
+    }
+
+    .review-stars .star:hover {
+        transform: scale(1.2) !important;
+    }
+
+    .review-stars .star.empty {
+        color: #e0e0e0 !important;
+    }
+
+    .review-message {
+        margin-top: 20px !important;
+        line-height: 1.7 !important;
+        color: #495057 !important;
+        font-size: 1.05rem !important;
+        background: linear-gradient(135deg, rgba(45, 108, 223, 0.03) 0%, rgba(66, 133, 244, 0.03) 100%) !important;
+        padding: 20px !important;
+        border-radius: 12px !important;
+        border-left: 4px solid #2d6cdf !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        position: relative !important;
+        font-style: italic !important;
+    }
+
+    .review-message::before {
+        content: '"' !important;
+        position: absolute !important;
+        top: -5px !important;
+        left: 10px !important;
+        font-size: 2rem !important;
+        color: #2d6cdf !important;
+        opacity: 0.3 !important;
+        font-family: serif !important;
+    }
+
+    .review-message::after {
+        content: '"' !important;
+        position: absolute !important;
+        bottom: -15px !important;
+        right: 10px !important;
+        font-size: 2rem !important;
+        color: #2d6cdf !important;
+        opacity: 0.3 !important;
+        font-family: serif !important;
+    }
+
+    .no-reviews {
+        text-align: center !important;
+        padding: 60px 20px !important;
+        color: #666 !important;
+    }
+
+    .no-reviews i {
+        font-size: 4rem !important;
+        margin-bottom: 20px !important;
+        opacity: 0.5 !important;
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+        filter: none !important;
+    }
+
+    .no-reviews h3 {
+        color: #2d6cdf !important;
+        margin-bottom: 10px !important;
+    }
+
+    .alert {
+        padding: 15px 20px !important;
+        border-radius: 8px !important;
+        margin-bottom: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        backdrop-filter: none !important;
+        position: relative !important;
+        overflow: visible !important;
+    }
+
+    .alert::before {
+        display: none !important;
+    }
+
+    .alert-success {
+        background: #d4edda !important;
+        color: #155724 !important;
+        border: 1px solid #c3e6cb !important;
+    }
+
+    .alert-error {
+        background: #f8d7da !important;
+        color: #721c24 !important;
+        border: 1px solid #f5c6cb !important;
+    }
+
+    .alert-info {
+        background: #cce7ff !important;
+        color: #004085 !important;
+        border: 1px solid #bee5eb !important;
+    }
+
+    .alert i {
+        font-size: 1.1rem !important;
+    }
+
+    .rating-summary {
+        background: white !important;
+        padding: 25px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+        margin-bottom: 30px !important;
+        border: 1px solid #f2f4f8 !important;
+        backdrop-filter: none !important;
+    }
+
+    .login-prompt {
+        text-align: center !important;
+        padding: 40px !important;
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+        margin-bottom: 30px !important;
+        border: 2px dashed #2d6cdf !important;
+        backdrop-filter: none !important;
+    }
+
+    .login-prompt i {
+        font-size: 3rem !important;
+        color: #2d6cdf !important;
+        margin-bottom: 20px !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+        filter: none !important;
+    }
+
+    .login-prompt h3 {
+        margin-bottom: 15px !important;
+        color: #2d6cdf !important;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: unset !important;
+    }
+
+    .login-prompt p {
+        color: #666 !important;
+        margin-bottom: 25px !important;
+    }
+
+    /* Mobile fixes */
+    @media (max-width: 768px) {
+        .rating-container {
+            padding: 20px !important;
+            margin: 10px !important;
+        }
+
+        .page-header h1 {
+            font-size: 24px !important;
+        }
+
+        .main-content {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+            min-height: auto !important;
+        }
+
+        .rating-stats {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+        }
+
+        .star-rating label {
+            font-size: 2rem !important;
+        }
+
+        .form-content {
+            padding: 20px !important;
+            min-height: 250px !important;
+        }
+
+        textarea.form-control {
+            min-height: 100px !important;
+            max-height: 100px !important;
+            height: 100px !important;
+        }
+    }
+
+    /* Remove any existing animations */
+    * {
+        animation: none !important;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card:hover {
+        animation: none !important;
+    }
+</style>
+
+<div class="rating-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1><i class="fas fa-star"></i> דירוג האתר</h1>
+        <p>שתף את החוויה שלך ועזור לנו להשתפר</p>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {% if message.tags == 'success' %}
+                    <i class="fas fa-check-circle"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="fas fa-exclamation-circle"></i>
+                {% else %}
+                    <i class="fas fa-info-circle"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Rating Summary -->
+    <div class="rating-summary">
+        <div class="rating-stats">
+            <div class="stat-card">
+                <div class="overall-rating">
+                    <div class="stat-label">דירוג ממוצע</div>
+                    <div class="rating-number">{{ average_rating|floatformat:1|default:"0.0" }}</div>
+                    <div class="review-stars" data-rating="{{ average_rating|default:0 }}">
+                        {% for i in "12345" %}
+                            <span class="star">★</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <br/>
+            <div class="stat-card">
+                <div class="stat-label">סה"כ ביקורות</div>
+                <div class="stat-number" style="display: flex !important; align-items: center !important; justify-content: center !important; height: 60px !important; margin-bottom: 15px !important;">{{ total_reviews|default:0 }}</div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 8px; color: #666; font-size: 0.9rem;">
+                    <i class="fas fa-comments" style="color: #2d6cdf;"></i>
+                    <span>ביקורות פעילות</span>
+                </div>
+                <div style="margin-top: 10px; height: 4px; background: linear-gradient(90deg, #2d6cdf, #4285f4); border-radius: 2px; opacity: 0.3;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Rating Form Section -->
+        <div class="rating-form-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-plus-circle"></i>
+                    הוסף ביקורת חדשה
+                </h3>
+            </div>
+
+            {% if user.is_authenticated %}
+            <div id="review-form-wrapper" class="form-content" style="display: block !important;">
+                {% if user_has_reviewed %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    כבר הגשת ביקורת על האתר. תוכל לערוך אותה בכל עת.
+                </div>
+                
+                <!-- הצגת הביקורת הנוכחית של המשתמש -->
+                <div style="background: linear-gradient(135deg, rgba(45, 108, 223, 0.05) 0%, rgba(66, 133, 244, 0.05) 100%); padding: 25px; border-radius: 12px; margin: 20px 0; border: 1px solid rgba(45, 108, 223, 0.1);">
+                    <h4 style="color: #2d6cdf; margin-bottom: 15px; font-size: 1.2rem;">
+                        <i class="fas fa-star" style="color: #ffc107; margin-left: 8px;"></i>
+                        הביקורת שלך
+                    </h4>
+                    
+                                     
+                    {% if user_review.message %}
+                    <div style="background: rgba(255, 255, 255, 0.8); padding: 15px; border-radius: 8px; border-right: 4px solid #2d6cdf; margin-bottom: 15px;">
+                        <strong style="color: #495057;">ההודעה שלך:</strong>
+                        <p style="margin: 8px 0 0 0; color: #666; line-height: 1.5;">{{ user_review.message|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="{% url 'edit_review' %}" class="btn btn-secondary">
+                            <i class="fas fa-edit"></i>
+                            ערוך ביקורת
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- סטטיסטיקות נוספות -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center;">
+                    <h5 style="color: #2d6cdf; margin-bottom: 15px;">
+                        <i class="fas fa-chart-bar" style="margin-left: 8px;"></i>
+                        תרומתך לקהילה
+                    </h5>
+                    <p style="color: #666; margin: 0; font-size: 0.95rem;">
+                        תודה על השתתפותך! הביקורת שלך עוזרת לשפר את החוויה עבור כולם.
+                        <br>
+                        <small style="color: #8a8a8a;">הביקורת נוספה ב-{{ user_review.created_at|date:"d/m/Y" }}</small>
+                    </p>
+                </div>
+                {% else %}
+                <form method="POST" action="{% url 'submit_review' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>דירוג כללי</label>
+                        <div class="star-rating">
+                            <input type="radio" name="rating" value="5" id="star5">
+                            <label for="star5" data-rating="5">★</label>
+                            <input type="radio" name="rating" value="4" id="star4">
+                            <label for="star4" data-rating="4">★</label>
+                            <input type="radio" name="rating" value="3" id="star3">
+                            <label for="star3" data-rating="3">★</label>
+                            <input type="radio" name="rating" value="2" id="star2">
+                            <label for="star2" data-rating="2">★</label>
+                            <input type="radio" name="rating" value="1" id="star1">
+                            <label for="star1" data-rating="1">★</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">הודעה (אופציונלי)</label>
+                        <textarea name="message" id="message" class="form-control"
+                                placeholder="שתף את החוויה שלך, הצעות לשיפור, או כל דבר אחר שתרצה להעביר..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                        שלח ביקורת
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="login-prompt">
+                <i class="fas fa-sign-in-alt"></i>
+                <h3>נדרש להתחבר</h3>
+                <p>כדי להוסיף ביקורת על האתר, עליך להתחבר תחילה</p>
+                <a href="{% url 'login_view' %}?next={{ request.path }}" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i>
+                    התחבר
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Reviews List Section -->
+        <div class="reviews-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-comments"></i>
+                    ביקורות אחרונות
+                </h3>
+            </div>
+
+            <div class="reviews-list">
+                {% if reviews %}
+                    {% for review in reviews %}
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="reviewer-info">
+                                <div class="reviewer-avatar">
+                                    {{ review.user.get_full_name|first|upper|default:"?" }}
+                                </div>
+                                <div class="reviewer-details">
+                                    <h4>{{ review.user.get_full_name|default:"משתמש אנונימי" }}</h4>
+                                    <div class="reviewer-role">{{ review.user.role|get_role_display }}</div>
+                                    <div class="review-date">{{ review.created_at|date:"d/m/Y H:i" }}</div>
+                                </div>
+                            </div>
+                            <div class="review-stars" data-rating="{{ review.rating }}">
+                                {% for i in "12345" %}
+                                    <span class="star">★</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if review.message %}
+                        <div class="review-message">
+                            {{ review.message|linebreaks }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="no-reviews">
+                    <i class="fas fa-comments"></i>
+                    <h3>אין ביקורות עדיין</h3>
+                    <p>היה הראשון להוסיף ביקורת על האתר!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Load More Reviews -->
+    {% if has_more_reviews %}
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="?page={{ page_number|add:1 }}" class="btn btn-secondary">
+            <i class="fas fa-plus"></i>
+            טען ביקורות נוספות
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Prevent layout shifts by stabilizing viewport
+    function stabilizeLayout() {
+        document.documentElement.style.overflowY = 'scroll';
+        document.body.style.overflowX = 'hidden';
+    }
+
+    stabilizeLayout();
+
+    function updateStarDisplay() {
+        const avgRatingElement = document.querySelector('.overall-rating .review-stars');
+        if (avgRatingElement) {
+            const avgRating = parseFloat(avgRatingElement.getAttribute('data-rating')) || 0;
+            const avgStars = avgRatingElement.querySelectorAll('.star');
+            avgStars.forEach((star, index) => {
+                if (index < Math.round(avgRating)) {
+                    star.classList.remove('empty');
+                    star.style.color = '#ffc107';
+                } else {
+                    star.classList.add('empty');
+                    star.style.color = '#ddd';
+                }
+            });
+        }
+
+        const reviewStars = document.querySelectorAll('.review-stars[data-rating]');
+        reviewStars.forEach(reviewStarContainer => {
+            const rating = parseInt(reviewStarContainer.getAttribute('data-rating')) || 0;
+            const stars = reviewStarContainer.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.remove('empty');
+                    star.style.color = '#ffc107';
+                } else {
+                    star.classList.add('empty');
+                    star.style.color = '#ddd';
+                }
+            });
+        });
+    }
+
+    updateStarDisplay();
+
+    const stars = document.querySelectorAll('.star-rating label');
+    const ratingInputs = document.querySelectorAll('.star-rating input');
+
+    // Clear previous event listeners
+    stars.forEach(star => {
+        star.replaceWith(star.cloneNode(true));
+    });
+
+    // Re-select after cloning
+    const newStars = document.querySelectorAll('.star-rating label');
+    const newRatingInputs = document.querySelectorAll('.star-rating input');
+
+    newStars.forEach((star, index) => {
+        star.addEventListener('click', function(e) {
+            e.preventDefault();
+            const rating = parseInt(this.getAttribute('data-rating'));
+            
+            // Check the corresponding radio button
+            const radioButton = document.getElementById(`star${rating}`);
+            if (radioButton) {
+                radioButton.checked = true;
+            }
+            
+            // Update star colors
+            updateStarColors(rating);
+        });
+
+        star.addEventListener('mouseover', function() {
+            const rating = parseInt(this.getAttribute('data-rating'));
+            highlightStars(rating);
+        });
+
+        star.addEventListener('mouseout', function() {
+            const checkedInput = document.querySelector('.star-rating input:checked');
+            if (checkedInput) {
+                const checkedRating = parseInt(checkedInput.value);
+                updateStarColors(checkedRating);
+            } else {
+                resetStars();
+            }
+        });
+    });
+
+    function updateStarColors(rating) {
+        newStars.forEach((star, index) => {
+            const starRating = parseInt(star.getAttribute('data-rating'));
+            if (starRating <= rating) {
+                star.style.color = '#ffc107';
+                star.style.textShadow = '0 0 10px rgba(255, 193, 7, 0.5)';
+            } else {
+                star.style.color = '#ddd';
+                star.style.textShadow = '';
+            }
+        });
+    }
+
+    function highlightStars(rating) {
+        newStars.forEach((star, index) => {
+            const starRating = parseInt(star.getAttribute('data-rating'));
+            if (starRating <= rating) {
+                star.style.color = '#ffc107';
+                star.style.transform = 'scale(1.15)';
+                star.style.textShadow = '0 0 15px rgba(255, 193, 7, 0.8)';
+            } else {
+                star.style.color = '#ddd';
+                star.style.transform = 'scale(1)';
+                star.style.textShadow = '';
+            }
+        });
+    }
+
+    function resetStars() {
+        newStars.forEach(star => {
+            star.style.color = '#ddd';
+            star.style.transform = 'scale(1)';
+            star.style.textShadow = '';
+        });
+    }
+
+    const ratingBars = document.querySelectorAll('.rating-bar-progress');
+    ratingBars.forEach(bar => {
+        const height = bar.style.height;
+        bar.style.height = '0%';
+        setTimeout(() => {
+            bar.style.height = height;
+        }, 500);
+    });
+
+    const form = document.querySelector('form[action*="submit_review"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const ratingSelected = document.querySelector('.star-rating input:checked');
+            if (!ratingSelected) {
+                e.preventDefault();
+                alert('אנא בחר דירוג לפני שליחת הביקורת');
+                return false;
+            }
+        });
+    }
+
+    // Enhanced: Toggle form is no longer needed - form is always visible
+    // const toggleBtn = document.getElementById('toggle-review-form');
+    // const formWrapper = document.getElementById('review-form-wrapper');
+
+    // Prevent mobile zoom on input focus
+    const inputs = document.querySelectorAll('input, textarea, select');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            // Maintain stable layout on focus
+            this.style.fontSize = '16px';
+        });
+    });
+});
+</script>
+{% endblock %}

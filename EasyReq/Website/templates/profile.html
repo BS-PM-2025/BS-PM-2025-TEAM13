@@ -44,7 +44,7 @@
     width: 100%;
     margin-left: 60px;  /* הזזת השדות ימינה */
   }
-  .input-box input {
+  .input-box input, .input-box select {
     width: 100%;
     padding: 14px 14px 14px 44px;
     border: 1px solid #ccc;
@@ -67,8 +67,54 @@
     display: inline-block;
   }
   .btn-home:hover { background-color: #4158d0; }
+  .btn-secondary {
+    background-color: #6c757d;
+  }
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  .btn-success {
+      background-color: #5a75f8;
+      color: white;
+  }
+  .btn-success:hover {
+      background-color: #4158d0;
+  }
   .success-message {
     color: #4CAF50; margin-bottom: 10px; font-size: 16px;
+  }
+  .error-message {
+    color: #f44336; margin-bottom: 10px; font-size: 16px;
+  }
+  .info-message {
+    color: #2196F3; margin-bottom: 10px; font-size: 16px;
+  }
+  .hidden-form {
+    display: none;
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+  }
+  .course-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 10px 0;
+    text-align: right;
+  }
+  .course-checkbox input {
+    margin-left: 10px;
+    width: auto;
+  }
+  .verification-notice {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    color: #856404;
   }
 </style>
 
@@ -77,10 +123,13 @@
 
   {% if messages %}
     {% for message in messages %}
-      <div class="success-message">{{ message }}</div>
+      <div class="{% if message.tags == 'error' %}error-message{% elif message.tags == 'info' %}info-message{% else %}success-message{% endif %}">
+        {{ message }}
+      </div>
     {% endfor %}
   {% endif %}
 
+  <!-- Profile Picture Upload Form -->
   <form method="POST" enctype="multipart/form-data">
     {% csrf_token %}
     <label for="profile_pic" class="profile-pic-container">
@@ -144,14 +193,48 @@
     <input type="text" value="{{ user.get_role_display }}" disabled>
   </div>
 
-  {% if user.role in 0|add:1 %}{% comment %} תנאי ל־student/lecturer {% endcomment %}
-    <button type="button" onclick="toggleCourses()" class="btn-home">הקורסים שלי</button>
+
+
+  <!-- Course Management for Lecturers -->
+  {% if user.role == 1 %}
+    <button type="button" onclick="toggleCourseForm()" class="btn-home">עדכון קורסים</button>
+
+    <form method="POST" id="courseForm" class="hidden-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_courses">
+      <h4>עדכון רשימת הקורסים</h4>
+      <div style="text-align: right; max-height: 300px; overflow-y: auto;">
+        {% for course in all_department_courses %}
+          <div class="course-checkbox">
+            <label for="course_{{ course.id }}">
+              {{ course.name }} (שנה {{ course.year }})
+            </label>
+            <input type="checkbox"
+                   id="course_{{ course.id }}"
+                   name="selected_courses"
+                   value="{{ course.id }}"
+                   {% if course in user.courses.all %}checked{% endif %}>
+          </div>
+        {% empty %}
+          <p>אין קורסים זמינים במחלקה.</p>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn-home btn-success">עדכן קורסים</button>
+      <button type="button" onclick="toggleCourseForm()" class="btn-home btn-secondary">ביטול</button>
+    </form>
+  {% endif %}
+
+  <!-- Show Courses for Students -->
+  {% if user.role == 0 %}
+  <button type="button" onclick="toggleCourses()" class="btn-home">הקורסים שלי</button>
     <div id="coursesContainer"
          style="display:none; margin-top:20px; text-align:center;">
       <h3>הקורסים שלך:</h3>
-      <ul>
+      <ul style="text-align: right; list-style-type: none; padding: 0;">
         {% for course in user.courses.all %}
-          <li>{{ course.name }}</li>
+          <li style="padding: 5px 0; border-bottom: 1px solid #eee;">
+            {{ course.name }} (שנה {{ course.year }})
+          </li>
         {% empty %}
           <li>אין לך קורסים.</li>
         {% endfor %}
@@ -159,14 +242,39 @@
     </div>
   {% endif %}
 
+  <!-- Email Update for Students -->
+  {% if user.role == 0 %}
+    <button type="button" onclick="toggleEmailForm()" class="btn-home">עדכון אימייל</button>
+
+    <form method="POST" id="emailForm" class="hidden-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_email">
+      <h4>עדכון כתובת אימייל</h4>
+      <div class="input-box">
+        <i class="bx bx-envelope"></i>
+        <input type="email"
+               name="new_email"
+               placeholder="כתובת אימייל חדשה"
+               required
+               pattern="^[\w\.-]+@(ac\.sce\.ac\.il|sce\.ac\.il)$"
+               title="עליך להזין מייל מכללתי בלבד">
+      </div>
+      <button type="submit" class="btn-home btn-success">עדכן אימייל</button>
+      <button type="button" onclick="toggleEmailForm()" class="btn-home btn-secondary">ביטול</button>
+    </form>
+  {% endif %}
+
+  <!-- Password Update -->
   <button type="button"
           onclick="togglePasswordForm()"
           class="btn-home">עדכון סיסמה</button>
 
   <form method="POST"
         id="passwordForm"
-        style="display:none; margin-top:20px;">
+        class="hidden-form">
     {% csrf_token %}
+    <input type="hidden" name="action" value="update_password">
+    <h4>עדכון סיסמה</h4>
     <div class="input-box">
       <i class="bx bxs-lock"></i>
       <input type="password"
@@ -188,7 +296,8 @@
              placeholder="אימות סיסמה"
              required>
     </div>
-    <button type="submit" class="btn-home">עדכן</button>
+    <button type="submit" class="btn-home btn-success">עדכן סיסמה</button>
+    <button type="button" onclick="togglePasswordForm()" class="btn-home btn-secondary">ביטול</button>
   </form>
 
   <button type="button"
@@ -200,12 +309,28 @@
   // toggle helpers
   function togglePasswordForm(){
     const f = document.getElementById('passwordForm');
-    f.style.display = f.style.display==='none'?'block':'none';
+    f.style.display = f.style.display==='none'||f.style.display===''?'block':'none';
   }
+
   function toggleCourses(){
     const c = document.getElementById('coursesContainer');
-    c.style.display = c.style.display==='none'?'block':'none';
+    c.style.display = c.style.display==='none'||c.style.display===''?'block':'none';
   }
+
+  function toggleEmailForm(){
+    const f = document.getElementById('emailForm');
+    if(f) {
+      f.style.display = f.style.display==='none'||f.style.display===''?'block':'none';
+    }
+  }
+
+  function toggleCourseForm(){
+    const f = document.getElementById('courseForm');
+    if(f) {
+      f.style.display = f.style.display==='none'||f.style.display===''?'block':'none';
+    }
+  }
+
   // קביעת צבע רקע אקראי ע"פ שם המשתמש
   function hashToHue(str){
     let h = 0;
@@ -214,6 +339,7 @@
     }
     return h;
   }
+
   document.addEventListener('DOMContentLoaded', ()=>{
     const circle = document.getElementById('initials-circle');
     if(circle){
@@ -225,7 +351,12 @@
     input?.addEventListener('change', e=>{
       if(e.target.files[0]){
         const r = new FileReader();
-        r.onload = ()=> document.getElementById('preview-pic').src = r.result;
+        r.onload = ()=> {
+          const preview = document.getElementById('preview-pic');
+          if(preview) {
+            preview.src = r.result;
+          }
+        };
         r.readAsDataURL(e.target.files[0]);
       }
     });

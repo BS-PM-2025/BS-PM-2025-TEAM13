@@ -1919,3 +1919,158 @@ def get_rating_stats(request):
 
     return JsonResponse({'average_rating': round(avg_rating, 2),'total_reviews': total_reviews,
         'rating_distribution': distribution, 'last_updated': timezone.now().isoformat()})
+
+@require_http_methods(["GET"])
+def rating_page(request):
+
+    all_reviews = Review.objects.select_related('user').order_by('-created_at')
+    total_reviews = all_reviews.count()
+
+    avg_rating_data = all_reviews.aggregate(avg_rating=Avg('rating'))
+    average_rating = avg_rating_data['avg_rating'] or 0
+
+    rating_breakdown = []
+    max_count = 0
+
+    for star in range(5, 0, -1):
+        count = all_reviews.filter(rating=star).count()
+        max_count = max(max_count, count)
+        rating_breakdown.append({
+            'stars': star,
+            'count': count,
+            'percentage': 0
+        })
+
+    # Calculate percentages for visual bars
+    for item in rating_breakdown:
+        if max_count > 0:
+            item['percentage'] = round((item['count'] / max_count * 100), 1)
+
+    # Check if current user has already reviewed
+    user_has_reviewed = False
+    if request.user.is_authenticated:
+        user_has_reviewed = Review.objects.filter(user=request.user).exists()
+
+    # Paginate reviews (show 10 per page)
+    paginator = Paginator(all_reviews, 10)
+    page_number = request.GET.get('page', 1)
+    reviews = paginator.get_page(page_number)
+
+    # Check if there are more pages
+    has_more_reviews = reviews.has_next()
+
+    context = {
+        'average_rating': average_rating,
+        'total_reviews': total_reviews,
+        'rating_breakdown': rating_breakdown,
+        'reviews': reviews,
+        'user_has_reviewed': user_has_reviewed,
+        'has_more_reviews': has_more_reviews,
+        'page_number': page_number,
+    }
+
+    return render(request, 'rating.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def submit_review(request):
+
+    try:
+        existing_review = Review.objects.filter(user=request.user).first()
+        if existing_review:
+            messages.warning(request, "כבר הגשת ביקורת על האתר. תוכל לערוך אותה במקום להגיש חדשה.")
+            return redirect('rating_page')
+
+        rating = request.POST.get('rating')
+        message = request.POST.get('message', '').strip()
+
+        if not rating or not rating.isdigit() or int(rating) not in range(1, 6):
+            messages.error(request, "אנא בחר דירוג תקין (1-5 כוכבים).")
+            return redirect('rating_page')
+
+        review = Review.objects.create(
+            user=request.user,
+            rating=int(rating),
+            message=message if message else None,
+            created_at=timezone.now()
+        )
+
+        star_text = "כוכב" if int(rating) == 1 else "כוכבים"
+        messages.success(request, f"תודה על הביקורת! דירגת את האתר ב-{rating} {star_text}.")
+        logger.info(f"New review submitted by user {request.user.id}: {rating} stars")
+
+    except Exception as e:
+        logger.error(f"Error submitting review: {str(e)}")
+        messages.error(request, "אירעה שגיאה בשליחת הביקורת. אנא נסה שוב.")
+
+    return redirect('rating_page')
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def edit_review(request):
+
+    try:
+        review = Review.objects.get(user=request.user)
+    except Review.DoesNotExist:
+        messages.error(request, "לא נמצאה ביקורת קיימת לעריכה.")
+        return redirect('rating_page')
+
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        message = request.POST.get('message', '').strip()
+
+        if not rating or not rating.isdigit() or int(rating) not in range(1, 6):
+            messages.error(request, "אנא בחר דירוג תקין (1-5 כוכבים).")
+            return render(request, 'edit_review.html', {'review': review})
+
+        review.rating = int(rating)
+        review.message = message if message else None
+        review.updated_at = timezone.now()
+        review.save()
+
+        messages.success(request, "הביקורת עודכנה בהצלחה!")
+        return redirect('rating_page')
+
+    context = {'review': review,'is_edit': True,}
+    return render(request, 'edit_review.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_review(request):
+
+    try:
+        review = Review.objects.get(user=request.user)
+        review.delete()
+        messages.success(request, "הביקורת נמחקה בהצלחה.")
+        logger.info(f"Review deleted by user {request.user.id}")
+    except Review.DoesNotExist:
+        messages.error(request, "לא נמצאה ביקורת למחיקה.")
+    except Exception as e:
+        logger.error(f"Error deleting review: {str(e)}")
+        messages.error(request, "אירעה שגיאה במחיקת הביקורת.")
+
+    return redirect('rating_page')
+
+
+@require_http_methods(["GET"])
+def get_rating_stats(request):
+
+    all_reviews = Review.objects.all()
+
+    if not all_reviews.exists():
+        return JsonResponse({'average_rating': 0,'total_reviews': 0, 'rating_distribution': [0, 0, 0, 0, 0]})
+
+    avg_rating = all_reviews.aggregate(avg_rating=Avg('rating'))['avg_rating']
+    total_reviews = all_reviews.count()
+
+    distribution = []
+    for star in range(1, 6):
+        count = all_reviews.filter(rating=star).count()
+        distribution.append(count)
+
+    return JsonResponse({'average_rating': round(avg_rating, 2),'total_reviews': total_reviews,
+        'rating_distribution': distribution, 'last_updated': timezone.now().isoformat()})
+

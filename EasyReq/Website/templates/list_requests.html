@@ -390,50 +390,106 @@ input[type="checkbox"] {
   border-color: #dc3545;
   color: white;
 }
+
+/* Custom date range styling */
+#customDateRange {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+#customDateRange input {
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  min-width: 150px;
+  margin: 0;
+}
 </style>
 
 <div class="container-box">
   <h2 class="section-title">ניהול בקשות</h2>
 
+  <!-- כפתור בקשה חדשה - רק לסטודנטים ומרצים -->
   {% if user.role == 0 or user.role == 1 %}
-  <div style="text-align: center; margin-top: 0;">
+  <div style="text-align: center; margin: 0 0 20px 0;">
       <a href="{% url 'create_request' %}" class="btn new-request-btn">
       <i class="fas fa-plus me-1"></i> בקשה חדשה
     </a>
   </div>
+  {% endif %}
 
+  <!-- ✅ הזז את החלק הזה מחוץ לתנאי כדי שכל המשתמשים יראו -->
+  <!-- אם יש נתונים - נציג את הגרף -->
+  {% if status_counts.0 > 0 or status_counts.1 > 0 or status_counts.2 > 0 %}
   <div class="chart-container">
-  <div class="{% if status_counts.0 == 0 and status_counts.1 == 0 and status_counts.2 == 0 %}no-data-chart{% endif %}">
-    <canvas id="statusChart"></canvas>
-  </div>
-
-  {% if status_counts.0 == 0 and status_counts.1 == 0 and status_counts.2 == 0 %}
-    <div style="text-align: center; color: #333; font-size: 20px; margin-top: 5px;">
-      No data yet
+    <div>
+      <canvas id="statusChart"></canvas>
     </div>
+  </div>
+  {% else %}
+  <!-- אם אין נתונים - טקסט פשוט -->
+  <div style="text-align: center; padding: 30px; color: #6c757d; font-size: 18px; font-weight: 500;">
+    אין נתונים להצגה
+  </div>
   {% endif %}
-</div>
-
-  {% endif %}
 
 
-  <div class="filter-bar mb-4">
+<div class="filter-bar mb-4">
     <input type="text" id="searchTitle" placeholder="חיפוש לפי כותרת..." class="form-control d-inline-block w-auto me-2 mb-2" />
 
     <select id="statusFilter" class="form-select d-inline-block w-auto me-2 mb-2">
       <option value="">כל הסטטוסים</option>
-      <option value="ממתין" selected>ממתין לטיפול</option>
+      <option value="ממתין לטיפול" selected>ממתין לטיפול</option>
       <option value="מאושר">מאושר</option>
       <option value="נדחה">נדחה</option>
     </select>
 
+   {% if user.role != 0 %}
     <select id="priorityFilter" class="form-select d-inline-block w-auto me-2 mb-2">
       <option value="">כל רמות הדחיפות</option>
       <option value="גבוהה">גבוהה</option>
       <option value="בינונית">בינונית</option>
       <option value="נמוכה">נמוכה</option>
     </select>
-  </div>
+    {% endif %}
+
+  <select id="requestTitleFilter" class="form-select d-inline-block w-auto me-2 mb-2" onchange="applyFilter('request_title', this.value)">
+    <option value="">כל סוגי הבקשות</option>
+    {% for value, label in user_request_titles %}
+      {% if user.role == 2 and label == "אחר" %}
+      {% else %}
+        <option value="{{ value }}" {% if filters.request_title == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+
+    <select id="dateRangeFilter" class="form-select d-inline-block w-auto me-2 mb-2" onchange="applyDateRange(this.value)">
+      <option value="">כל התאריכים</option>
+      <option value="today" {% if filters.date_range == "today" %}selected{% endif %}>היום</option>
+      <option value="yesterday" {% if filters.date_range == "yesterday" %}selected{% endif %}>אתמול</option>
+      <option value="this_week" {% if filters.date_range == "this_week" %}selected{% endif %}>השבוע</option>
+      <option value="last_week" {% if filters.date_range == "last_week" %}selected{% endif %}>השבוע שעבר</option>
+      <option value="this_month" {% if filters.date_range == "this_month" %}selected{% endif %}>החודש</option>
+      <option value="last_month" {% if filters.date_range == "last_month" %}selected{% endif %}>החודש שעבר</option>
+      <option value="this_year" {% if filters.date_range == "this_year" %}selected{% endif %}>השנה</option>
+      <option value="custom" {% if filters.date_from or filters.date_to %}selected{% endif %}>טווח מותאם אישית</option>
+    </select>
+
+    <div id="customDateRange" style="display: {% if filters.date_from or filters.date_to %}block{% else %}none{% endif %};">
+      <input type="date" id="dateFrom" name="date_from" value="{{ filters.date_from|default:'' }}" 
+            placeholder="מתאריך" class="form-control d-inline-block w-auto me-2 mb-2" 
+            onchange="applyCustomDateFilter()" style="max-width: 150px;" />
+            
+      <input type="date" id="dateTo" name="date_to" value="{{ filters.date_to|default:'' }}" 
+            placeholder="עד תאריך" class="form-control d-inline-block w-auto me-2 mb-2" 
+            onchange="applyCustomDateFilter()" style="max-width: 150px;" />
+    </div>
+</div>
 
 
    {% if user.role == 1 or user.role == 2 or user.role == 3 %}
@@ -445,14 +501,12 @@ input[type="checkbox"] {
         <form method="post" action="{% url 'bulk_delete_requests' %}" id="requestsForm">
         {% csrf_token %}
       
-      <!-- אזור פעולות קבוצתיות -->
-
        
       {% if user.role == 1 or user.role == 2 or user.role == 3 %}
       <div class="bulk-actions" id="bulkActions">
         <div style="display: flex; align-items: center; gap: 15px;">
           <span>נבחרו: <span class="selected-count" id="selectedCount">0</span> בקשות</span>
-          <button type="button" class="bulk-delete-btn" id="bulkDeleteBtn" onclick="bulkDelete()">
+          <button type="submit" class="bulk-delete-btn" id="bulkDeleteBtn" onclick="bulkDelete()">
             <i class="fas fa-trash me-1"></i> מחק נבחרים
           </button>
         </div>
@@ -675,14 +729,14 @@ input[type="checkbox"] {
 
   // פונקצית הפילטר המעודכנת
   document.addEventListener("DOMContentLoaded", function () {
-    const titleInput = document.getElementById("searchTitle");
-    const statusFilter = document.getElementById("statusFilter");
-    const priorityFilter = document.getElementById("priorityFilter");
+  const titleInput = document.getElementById("searchTitle");
+  const statusFilter = document.getElementById("statusFilter");
+  const priorityFilter = document.getElementById("priorityFilter");
 
-      function filterTable() {
+  function filterTable() {
     const title = titleInput.value.toLowerCase();
     const status = statusFilter.value;
-    const priority = priorityFilter.value;
+    const priority = priorityFilter ? priorityFilter.value : "";
     const rows = document.querySelectorAll("#sortable-table tbody tr");
 
     rows.forEach((row) => {
@@ -692,8 +746,27 @@ input[type="checkbox"] {
       const priorityIndex = hasCheckbox ? 5 : 4;
 
       const titleText = row.children[titleIndex].textContent.toLowerCase();
-      const statusText = row.children[statusIndex].textContent.trim();
-      const priorityText = priorityIndex < row.children.length ? row.children[priorityIndex].textContent.trim() : '';
+      
+      // תיקון עיקרי: טיפול נכון בטקסט הסטטוס
+      const statusCell = row.children[statusIndex];
+      let statusText = "";
+      
+      // קריאת הטקסט והסרת אייקונים וטקסט מיותר
+      if (statusCell) {
+        const fullText = statusCell.textContent.trim();
+        
+        // מיפוי טקסט לערכים סטנדרטיים
+        if (fullText.includes("ממתין")) {
+          statusText = "ממתין לטיפול";
+        } else if (fullText.includes("מאושר")) {
+          statusText = "מאושר";
+        } else if (fullText.includes("נדחה")) {
+          statusText = "נדחה";
+        }
+      }
+      
+      const priorityText = priorityIndex < row.children.length ? 
+                          row.children[priorityIndex].textContent.trim() : '';
 
       const matchTitle = titleText.includes(title);
       const matchStatus = !status || statusText === status;
@@ -703,12 +776,15 @@ input[type="checkbox"] {
     });
   }
 
-    titleInput.addEventListener("input", filterTable);
-    statusFilter.addEventListener("change", filterTable);
+  titleInput.addEventListener("input", filterTable);
+  statusFilter.addEventListener("change", filterTable);
+  if (priorityFilter) {
     priorityFilter.addEventListener("change", filterTable);
+  }
 
-    filterTable();
-  });
+  // הפעלת הסינון בטעינת הדף
+  filterTable();
+});
 
 const ctx = document.getElementById('statusChart');
 
@@ -840,8 +916,64 @@ function toggleSelectionMode() {
     table.classList.remove('selection-mode-active');
     toggleBtn.classList.remove('active');
     toggleBtn.innerHTML = '<i class="fas fa-check-square me-1"></i> בחר בקשות';
-    if (bulkActions) bulkActions.classList.remove('show'); //  מסתיר כפתור מחיקה + נבחרו
+    if (bulkActions) bulkActions.classList.remove('show'); // מסתיר כפתור מחיקה + נבחרו
   }
+}
+
+function applyFilter(filterName, filterValue) {
+  const url = new URL(window.location);
+  if (filterValue) {
+    url.searchParams.set(filterName, filterValue);
+  } else {
+    url.searchParams.delete(filterName);
+  }
+  window.location.href = url.toString();
+}
+
+function applyDateRange(range) {
+  const url = new URL(window.location);
+  const customDateDiv = document.getElementById('customDateRange');
+  
+  if (range === 'custom') {
+    customDateDiv.style.display = 'block';
+    return; // לא נעשה redirect עדיין
+  } else {
+    customDateDiv.style.display = 'none';
+    // נוקה תאריכים מותאמים אישית
+    url.searchParams.delete('date_from');
+    url.searchParams.delete('date_to');
+  }
+  
+  if (range) {
+    url.searchParams.set('date_range', range);
+  } else {
+    url.searchParams.delete('date_range');
+  }
+  
+  window.location.href = url.toString();
+}
+
+function applyCustomDateFilter() {
+  const url = new URL(window.location);
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  
+  // נוקה את הטווח הקבוע
+  url.searchParams.delete('date_range');
+  
+  if (dateFrom) {
+    url.searchParams.set('date_from', dateFrom);
+  } else {
+    url.searchParams.delete('date_from');
+  }
+  
+  if (dateTo) {
+    url.searchParams.set('date_to', dateTo);
+  } else {
+    url.searchParams.delete('date_to');
+  }
+  
+  window.location.href = url.toString();
 }
 
 </script>

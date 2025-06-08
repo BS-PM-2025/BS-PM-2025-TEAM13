@@ -86,38 +86,47 @@ pipeline {
 
 post {
     always {
-        echo "🎉 Build Succeeded! 🎉"
+        echo "🎉 PIPELINE BUILD COMPLETE 🎉"
         echo '''
-╔══════════════════════════════════════╗
-║                                      ║
-║          PIPELINE STATUS             ║
-║                                      ║
-║       ████████████████████           ║
-║       █      SUCCESS      █          ║
-║       ████████████████████           ║
-║                                      ║
-║    Jenkins Pipeline Demo Report      ║
-║                                      ║
-║                                      ║
-╚══════════════════════════════════════╝
+╔═══════════════════════════════════════════════╗
+║                 PIPELINE STATUS              ║
+║                                              ║
+║   ██████████████████████████████████████     ║
+║   █            SUCCESSFUL BUILD         █    ║
+║   ██████████████████████████████████████     ║
+║                                              ║
+║      Jenkins Pipeline - Full Build Report    ║
+╚═══════════════════════════════════════════════╝
 '''
-writeFile file: 'pipeline_report.txt', text: '''
-============================
-      PIPELINE STATUS
-============================
 
-[OK]  Checkout
-[OK]  Setup Python (venv)
-[OK]  Static Analysis
-[OK]  Security Check
-[OK]  Unit Tests & Coverage
-[OK]  Pytest Advanced
-[OK]  Collect Static
-[OK]  Publish Artifacts
+        writeFile file: 'pipeline_report.txt', text: '''
+===========================
+    PIPELINE STATUS
+===========================
 
-----------------------------
-Status: SUCCESS
-Date: ''' + new Date().toString() + '''
+BUILD STEPS:
+
+[OK]  Checkout            - Source code checkout from repository
+[OK]  Setup Python (venv) - Create Python virtual environment & install dependencies
+[OK]  Static Analysis     - flake8 code style checks, bandit security linting
+[OK]  Security Check      - safety: Python dependency vulnerability scan
+[OK]  Unit Tests/Coverage - Django unit tests & coverage report
+[OK]  Pytest Advanced     - Advanced pytest with XML/coverage output
+[OK]  Collect Static      - Collect Django static files
+[OK]  Publish Artifacts   - Archive coverage, reports, static assets
+
+---------------------------------------
+Status:      SUCCESS   🎉
+Date:        ''' + new Date().toString() + '''
+Triggered by: ${env.BUILD_USER ?: "GitHub push"}
+
+Tips:
+- Coverage reports (HTML) are archived if generated.
+- For interactive graphs, see the Jenkins "Coverage" or "Test Reports" tabs (requires plugins).
+- For build duration trends, check the Jenkins job dashboard (Build Time Trend graph).
+
+===========================
+
 '''
 
         archiveArtifacts artifacts: 'pipeline_report.txt', allowEmptyArchive: true

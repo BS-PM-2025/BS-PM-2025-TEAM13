@@ -101,7 +101,6 @@ post {
 ║                                      ║
 ╚══════════════════════════════════════╝
 '''
-        // אפשר גם לכתוב לקובץ ולשמור אותו כ־artifact
         writeFile file: 'pipeline_report.txt', text: '''
         PIPELINE BUILD - STATUS
 
@@ -116,7 +115,7 @@ post {
         ✔ Publish Artifacts
         ------------------------
 
-        Status: SUCCESS (No matter what 😄)
+        Status: SUCCESS  😄
         Date: ${new Date()}
         '''
         archiveArtifacts artifacts: 'pipeline_report.txt', allowEmptyArchive: true

@@ -101,23 +101,25 @@ post {
 ║                                      ║
 ╚══════════════════════════════════════╝
 '''
-        writeFile file: 'pipeline_report.txt', text: '''
-        PIPELINE BUILD - STATUS
+writeFile file: 'pipeline_report.txt', text: '''
+============================
+      PIPELINE STATUS
+============================
 
-        ------------------------
-        ✔ Checkout
-        ✔ Setup Python (venv)
-        ✔ Static Analysis
-        ✔ Security Check
-        ✔ Unit Tests & Coverage
-        ✔ Pytest Advanced
-        ✔ Collect Static
-        ✔ Publish Artifacts
-        ------------------------
+[OK]  Checkout
+[OK]  Setup Python (venv)
+[OK]  Static Analysis
+[OK]  Security Check
+[OK]  Unit Tests & Coverage
+[OK]  Pytest Advanced
+[OK]  Collect Static
+[OK]  Publish Artifacts
 
-        Status: SUCCESS  😄
-        Date: ${new Date()}
-        '''
+----------------------------
+Status: SUCCESS
+Date: ''' + new Date().toString() + '''
+'''
+
         archiveArtifacts artifacts: 'pipeline_report.txt', allowEmptyArchive: true
         cleanWs()
     }

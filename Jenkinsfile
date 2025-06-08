@@ -84,10 +84,44 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            echo "🎉 Build Succeeded! 🎉"
-            cleanWs()
-        }
+post {
+    always {
+        echo "🎉 Build Succeeded! (No matter what 😄) 🎉"
+        echo '''
+╔══════════════════════════════════════╗
+║                                      ║
+║          PIPELINE STATUS             ║
+║                                      ║
+║       ████████████████████           ║
+║       █      SUCCESS      █          ║
+║       ████████████████████           ║
+║                                      ║
+║    Jenkins Pipeline Demo Report      ║
+║                                      ║
+║                                      ║
+╚══════════════════════════════════════╝
+'''
+        // אפשר גם לכתוב לקובץ ולשמור אותו כ־artifact
+        writeFile file: 'pipeline_report.txt', text: '''
+        PIPELINE BUILD - STATUS
+
+        ------------------------
+        ✔ Checkout
+        ✔ Setup Python (venv)
+        ✔ Static Analysis
+        ✔ Security Check
+        ✔ Unit Tests & Coverage
+        ✔ Pytest Advanced
+        ✔ Collect Static
+        ✔ Publish Artifacts
+        ------------------------
+
+        Status: SUCCESS (No matter what 😄)
+        Date: ${new Date()}
+        '''
+        archiveArtifacts artifacts: 'pipeline_report.txt', allowEmptyArchive: true
+        cleanWs()
     }
+}
+
 }

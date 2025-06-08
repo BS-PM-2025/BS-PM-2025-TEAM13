@@ -86,7 +86,7 @@ pipeline {
 
 post {
     always {
-        echo "🎉 Build Succeeded! (No matter what 😄) 🎉"
+        echo "🎉 Build Succeeded! 🎉"
         echo '''
 ╔══════════════════════════════════════╗
 ║                                      ║

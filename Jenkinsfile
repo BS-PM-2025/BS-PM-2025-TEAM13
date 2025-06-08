@@ -116,7 +116,7 @@ BUILD STEPS:
 [OK]  Publish Artifacts   - Archive coverage, reports, static assets
 
 ---------------------------------------
-Status:      SUCCESS   🎉
+Status:      SUCCESS   
 Date:        ''' + new Date().toString() + '''
 Triggered by: ${env.BUILD_USER ?: "GitHub push"}
 

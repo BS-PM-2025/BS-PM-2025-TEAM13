@@ -21,6 +21,13 @@ pipeline {
 
         stage('Setup Python') {
             steps {
+                sh '''
+                    if ! python3 -m venv --help > /dev/null 2>&1; then
+                        echo "ERROR: python3-venv is not installed. Please install it on the Jenkins agent using:"
+                        echo "sudo apt-get update && sudo apt-get install python3-venv"
+                        exit 1
+                    fi
+                '''
                 sh 'python3 -m venv $VENV'
                 sh '. $VENV/bin/activate && pip install --upgrade pip'
                 sh '. $VENV/bin/activate && pip install -r requirements.txt'

@@ -19,12 +19,6 @@ pipeline {
             }
         }
 
-        stage('Cache Dependencies') {
-            steps {
-                cache(path: './.cache/pip', key: "pip-cache", restoreKeys: ["pip-cache"])
-            }
-        }
-
         stage('Setup Python') {
             steps {
                 sh 'python3 -m venv $VENV'
@@ -69,14 +63,14 @@ pipeline {
 
         stage('Publish Artifacts') {
             steps {
-                archiveArtifacts artifacts: '**/coverage.xml, **/pytest-report.xml, **/htmlcov/**, **/static/**', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'coverage.xml, pytest-report.xml, htmlcov/**, static/**', allowEmptyArchive: true
             }
         }
     }
 
     post {
         success {
-            junit '**/pytest-report.xml'
+            junit 'pytest-report.xml'
             publishHTML(target: [
                 reportDir: 'htmlcov',
                 reportFiles: 'index.html',

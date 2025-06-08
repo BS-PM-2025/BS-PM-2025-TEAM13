@@ -86,7 +86,15 @@ pipeline {
 
     post {
         always {
-            echo "🎉 Build Succeeded! (No matter what 😄) 🎉"
+            echo "🎉 Build Succeeded! 🎉"
+            publishHTML(target: [
+                reportDir: 'htmlcov',
+                reportFiles: 'index.html',
+                reportName: 'Coverage Report',
+                keepAll: true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
+            ])
             cleanWs()
         }
     }

@@ -6,6 +6,8 @@ from django.contrib.auth import login, logout, authenticate, update_session_auth
 from django.contrib.auth.decorators import login_required
 from django.views.generic import CreateView
 from openai import OpenAI
+import os
+from dotenv import load_dotenv
 from .models import User, Request, RequestStatus, RequestComment, Department, Review
 from .forms import RegistrationForm
 from django.http import JsonResponse
@@ -1723,23 +1725,27 @@ def create_request(request):
         'title_choices': Request.TITLES,
     })
 
+load_dotenv()
 def website_chat_response(request):
     """
     פונקציה מתאמת שמטפלת בבקשות צ'אט מהוידג'ט
     """
     if request.method == 'POST':
         try:
+            print("התקבלה בקשת POST בוובסייט")
             data = json.loads(request.body)
             user_message = data.get('message', '')
+            print(f"הודעת המשתמש: {user_message}")
 
             # קבלת תשובה מ-ChatGPT
             bot_response = get_openai_response(user_message)
+            print(f"תשובת הבוט (התחלה): {bot_response[:50]}...")
 
             return JsonResponse({
                 'response': bot_response
             })
         except Exception as e:
-            logger.debug(f"שגיאה בטיפול בבקשה: {str(e)}")
+            print(f"שגיאה בטיפול בבקשה: {str(e)}")
             return JsonResponse({
                 'response': f"אירעה שגיאה: {str(e)}"
             })
@@ -1747,13 +1753,21 @@ def website_chat_response(request):
 
 def get_openai_response(message):
     """
-    מקבל תשובה ממודל שפה של OpenAI
+    מקבל תשובה ממודל שפה של OpenAI באמצעות מפתח מקובץ .env
     """
     try:
-        logger.debug("מתחבר ל-OpenAI API...")
-        # יצירת קליינט OpenAI
-        client = OpenAI(
-            api_key="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")
+        print("מתחבר ל-OpenAI API...")
+
+        # קריאת המפתח מקובץ .env
+        api_key = os.getenv('OPENAI_API_KEY')
+
+        # בדיקה שהמפתח נטען בהצלחה
+        if not api_key:
+            print("שגיאה: לא נמצא מפתח API בקובץ .env")
+            return "שגיאה: לא נמצא מפתח API. אנא וודא שקובץ .env מוגדר נכון."
+
+        # יצירת קליינט OpenAI עם המפתח מקובץ .env
+        client = OpenAI(api_key=api_key)
 
         # בניית הפרומפט והקשר עם הגבלות נוקשות
         system_prompt = """
@@ -1780,21 +1794,15 @@ def get_openai_response(message):
         3. הצע לדבר על אחד מהנושאים המותרים ברשימה
 
         עבור כל אחת מהבקשות המותרות, עליך להסביר:
-        1. מהו הנתיב במערכת להגשת הבקשה (איפה צריך ללחוץ)
-        2. למי הבקשה מוגשת (מרצה, יועץ, דיקנט וכו')
-        3. איזה מסמכים נדרשים לרוב להגשת הבקשה
-        4. מהו זמן הטיפול המשוער בבקשה
+        1. מהו הנתיב במערכת להגשת הבקשה
+        2. למי הבקשה מוגשת
+        3. איזה מסמכים נדרשים
+        4. מהו זמן הטיפול המשוער
 
-        כאשר המשתמש בוחר באפשרות "מידע על סטטוס בקשות", עליך להסביר את הנתיב במערכת לצפייה בסטטוס הבקשות.
-
-        כאשר המשתמש בוחר באפשרות "עזרה בניסוח בקשות", עליך לשאול אותו איזה סוג בקשה הוא רוצה לנסח ואז לספק לו תבנית מפורטת לניסוח הבקשה המבוקשת.
-
-        תשובותיך צריכות להיות מפורטות, מקצועיות אך ידידותיות, ולהכיל את כל המידע הדרוש לסטודנט כדי להבין איך להגיש את הבקשה ומה לצפות בהמשך התהליך.
-
-        הערה חשובה: אתה לא יודע את הנתיבים המדויקים במערכת, למי בדיוק מוגשת כל בקשה, או את המסמכים הספציפיים הנדרשים - לכן הצג מידע כללי ומסוגנן שיכול להתאים למערכות בקשות סטודנטים טיפוסיות. הדגש שמדובר במידע כללי וכי הנתיבים המדויקים עשויים להשתנות בהתאם למערכת הספציפית של המוסד האקדמי.
+        תשובותיך צריכות להיות מפורטות, מקצועיות אך ידידותיות.
         """
 
-        logger.debug("שולח בקשה ל-OpenAI API...")
+        print("שולח בקשה ל-OpenAI API...")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -1804,11 +1812,10 @@ def get_openai_response(message):
             max_tokens=1000
         )
 
-        logger.debug("התקבלה תשובה מ-OpenAI API")
-        # החזרת התשובה
+        print("התקבלה תשובה מ-OpenAI API")
         return response.choices[0].message.content
     except Exception as e:
-        logger.debug(f"שגיאה בחיבור ל-OpenAI: {str(e)}")
+        print(f"שגיאה בחיבור ל-OpenAI: {str(e)}")
         return f"אירעה שגיאה בתקשורת עם מערכת ה-AI. נא לנסות שוב מאוחר יותר. (שגיאה: {str(e)})"
 
 

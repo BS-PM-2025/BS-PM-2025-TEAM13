@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        VENV = 'venv'
         DJANGO_SETTINGS_MODULE = 'Website.settings'
         PYTHONPATH = '.'
     }
@@ -21,52 +20,52 @@ pipeline {
 
         stage('Setup Python') {
             steps {
-                sh 'python3 -m venv $VENV || true'
-                sh '. $VENV/bin/activate && pip install --upgrade pip'
-                sh '. $VENV/bin/activate && pip install -r requirements.txt || true'
-                sh '. $VENV/bin/activate && pip install flake8 coverage pytest pytest-django pytest-cov safety bandit'
-            }
-        }
-
-        stage('Static Analysis') {
-            steps {
-                sh '. $VENV/bin/activate && flake8 . --count --show-source --statistics > flake8-report.txt || true'
-                sh '. $VENV/bin/activate && bandit -r . -f html -o bandit-report.html || true'
-            }
-        }
-
-        stage('Security Check') {
-            steps {
-                sh '. $VENV/bin/activate && safety check --full-report > safety-report.txt || true'
+                sh 'pip install --upgrade pip'
+                sh 'pip install -r requirements.txt || true'
+                sh 'pip install flake8 coverage pytest pytest-django pytest-cov safety bandit'
             }
         }
 
         stage('Manual Integration Checks') {
             steps {
                 sh '''
+                    mkdir -p tests
                     echo "import os; assert os.path.exists('manage.py')" > tests/test_manual_1.py
                     echo "import django; django.setup()" > tests/test_manual_2.py
                 '''
             }
         }
 
+        stage('Static Analysis') {
+            steps {
+                sh 'flake8 . --count --show-source --statistics > flake8-report.txt || true'
+                sh 'bandit -r . -f html -o bandit-report.html || true'
+            }
+        }
+
+        stage('Security Check') {
+            steps {
+                sh 'safety check --full-report > safety-report.txt || true'
+            }
+        }
+
         stage('Unit Tests & Coverage') {
             steps {
-                sh '. $VENV/bin/activate && coverage run --source=. manage.py test || true'
-                sh '. $VENV/bin/activate && coverage html || true'
-                sh '. $VENV/bin/activate && coverage xml || true'
+                sh 'coverage run --source=. manage.py test || true'
+                sh 'coverage html || true'
+                sh 'coverage xml || true'
             }
         }
 
         stage('Pytest Checks') {
             steps {
-                sh '. $VENV/bin/activate && pytest tests/ --ds=Website.settings --junitxml=pytest-report.xml --cov=. --cov-report=xml --cov-report=html || true'
+                sh 'pytest tests/ --ds=Website.settings --junitxml=pytest-report.xml --cov=. --cov-report=xml --cov-report=html || true'
             }
         }
 
         stage('Collect Static') {
             steps {
-                sh '. $VENV/bin/activate && python manage.py collectstatic --noinput || true'
+                sh 'python manage.py collectstatic --noinput || true'
             }
         }
 

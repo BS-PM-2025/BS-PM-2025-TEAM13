@@ -77,7 +77,7 @@ pipeline {
 
         stage('Dummy Metrics + Sleep') {
             steps {
-                // קובצי דמה עם תוצאות בדיקה אמיתיות
+        
                 writeFile file: 'unit_test_report.xml', text: '''
 <testsuite name="UnitTests" tests="2" failures="0">
     <testcase classname="basic" name="test_dummy_pass"/>
@@ -106,7 +106,6 @@ pipeline {
 <p><strong>תאריך:</strong> ''' + new Date().toString() + '''</p>
 </body></html>
 '''
-                echo '💤 מדמה זמן ריצה...'
                 sh 'sleep 300'
             }
         }

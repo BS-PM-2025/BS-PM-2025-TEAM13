@@ -35,8 +35,8 @@ pipeline {
         stage('Static Analysis') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    sh '. $VENV/bin/activate && flake8 . --count --show-source --statistics || true'
-                    sh '. $VENV/bin/activate && bandit -r . || true'
+                    sh '. $VENV/bin/activate && flake8 . --count --show-source --statistics > flake8-report.txt || true'
+                    sh '. $VENV/bin/activate && bandit -r . -f html -o bandit-report.html || true'
                 }
             }
         }
@@ -44,7 +44,7 @@ pipeline {
         stage('Security Check') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    sh '. $VENV/bin/activate && safety check || true'
+                    sh '. $VENV/bin/activate && safety check --full-report > safety-report.txt || true'
                 }
             }
         }
@@ -53,8 +53,8 @@ pipeline {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
                     sh '. $VENV/bin/activate && coverage run --source=. manage.py test || true'
-                    sh '. $VENV/bin/activate && coverage xml || true'
                     sh '. $VENV/bin/activate && coverage html || true'
+                    sh '. $VENV/bin/activate && coverage xml || true'
                 }
             }
         }
@@ -62,7 +62,7 @@ pipeline {
         stage('Pytest Advanced') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    sh '. $VENV/bin/activate && pytest --ds=Website.settings --junitxml=pytest-report.xml --cov=. --cov-report=xml || true'
+                    sh '. $VENV/bin/activate && pytest --ds=Website.settings --junitxml=pytest-report.xml --cov=. --cov-report=xml --cov-report=html || true'
                 }
             }
         }
@@ -75,63 +75,58 @@ pipeline {
             }
         }
 
+        stage('Generate Summary Report') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                    writeFile file: 'index.html', text: '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pipeline Reports Dashboard</title>
+</head>
+<body>
+    <h1>📊 Pipeline Reports Summary</h1>
+    <ul>
+        <li><a href="flake8-report.txt">Flake8 Report</a></li>
+        <li><a href="bandit-report.html">Bandit Security Report</a></li>
+        <li><a href="safety-report.txt">Safety Vulnerability Report</a></li>
+        <li><a href="coverage.xml">Coverage XML</a></li>
+        <li><a href="htmlcov/index.html">Coverage HTML</a></li>
+        <li><a href="pytest-report.xml">Pytest JUnit XML</a></li>
+        <li><a href="static/">Static Files</a></li>
+    </ul>
+    <p><strong>Last Build:</strong> ''' + new Date().toString() + '''</p>
+</body>
+</html>
+'''
+                }
+            }
+        }
+
         stage('Publish Artifacts') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    archiveArtifacts artifacts: 'coverage.xml, pytest-report.xml, htmlcov/**, static/**', allowEmptyArchive: true
+                    archiveArtifacts artifacts: '''
+                        index.html,
+                        flake8-report.txt,
+                        safety-report.txt,
+                        bandit-report.html,
+                        coverage.xml,
+                        pytest-report.xml,
+                        htmlcov/**,
+                        static/**
+                    ''', allowEmptyArchive: true
                 }
             }
         }
     }
 
-post {
-    always {
-        echo "🎉 PIPELINE BUILD COMPLETE 🎉"
-        echo '''
-╔═══════════════════════════════════════════════╗
-║                 PIPELINE STATUS              ║
-║                                              ║
-║   ██████████████████████████████████████     ║
-║   █            SUCCESSFUL BUILD         █    ║
-║   ██████████████████████████████████████     ║
-║                                              ║
-║      Jenkins Pipeline - Full Build Report    ║
-╚═══════════════════════════════════════════════╝
-'''
-
-        writeFile file: 'pipeline_report.txt', text: '''
-===========================
-    PIPELINE STATUS
-===========================
-
-BUILD STEPS:
-
-[OK]  Checkout            - Source code checkout from repository
-[OK]  Setup Python (venv) - Create Python virtual environment & install dependencies
-[OK]  Static Analysis     - flake8 code style checks, bandit security linting
-[OK]  Security Check      - safety: Python dependency vulnerability scan
-[OK]  Unit Tests/Coverage - Django unit tests & coverage report
-[OK]  Pytest Advanced     - Advanced pytest with XML/coverage output
-[OK]  Collect Static      - Collect Django static files
-[OK]  Publish Artifacts   - Archive coverage, reports, static assets
-
----------------------------------------
-Status:      SUCCESS   
-Date:        ''' + new Date().toString() + '''
-Triggered by: ${env.BUILD_USER ?: "GitHub push"}
-
-Tips:
-- Coverage reports (HTML) are archived if generated.
-- For interactive graphs, see the Jenkins "Coverage" or "Test Reports" tabs (requires plugins).
-- For build duration trends, check the Jenkins job dashboard (Build Time Trend graph).
-
-===========================
-
-'''
-
-        archiveArtifacts artifacts: 'pipeline_report.txt', allowEmptyArchive: true
-        cleanWs()
+    post {
+        always {
+            echo "🎉 PIPELINE BUILD COMPLETE 🎉"
+            archiveArtifacts artifacts: 'index.html', allowEmptyArchive: true
+            cleanWs()
+        }
     }
-}
-
 }

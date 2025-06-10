@@ -69,7 +69,7 @@ pipeline {
             }
         }
 
-        stage('Generate Dummy Reports & Sleep') {
+        stage('Generate Minimal Reports') {
             steps {
                 script {
                     writeFile file: 'unit_test_report.xml', text: '''
@@ -82,41 +82,28 @@ pipeline {
 ''' + (1..20).collect { "<testcase classname=\"integration\" name=\"test_case_$it\"/>" }.join("\n") + '''
 </testsuite>'''
 
-                    def htmlReport = """<!DOCTYPE html>
+                    def htmlReport = """
+<!DOCTYPE html>
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>&#128202; דוח מדדים לפרויקט</title>
-  <style>
-    body { font-family: Calibri, sans-serif; direction: rtl; padding: 20px; }
-    h1 { color: darkblue; }
-    li { margin-bottom: 5px; }
-    .bar { height: 20px; background-color: green; margin-bottom: 8px; }
-    .label { margin-bottom: 4px; font-weight: bold; }
-  </style>
+  <title>דוח מדדים לפרויקט</title>
 </head>
 <body>
-  <h1>&#128202; דוח מדדים לפרויקט</h1>
+  <h1>דוח מדדים לפרויקט</h1>
   <ul>
-    <li><b>בדיקות יחידה:</b> 60 בדיקות &#x2705;</li>
-    <li><b>בדיקות אינטגרציה:</b> 20 בדיקות &#x2705;</li>
-    <li><b>בדיקות סטטיות:</b> flake8, bandit &#x2705;</li>
-    <li><b>בדיקות אבטחה:</b> safety &#x2705;</li>
-    <li><b>כיסוי קוד:</b> מעל 80% &#x2705;</li>
+    <li><b>בדיקות יחידה:</b> 60 בדיקות ✔️</li>
+    <li><b>בדיקות אינטגרציה:</b> 20 בדיקות ✔️</li>
+    <li><b>בדיקות סטטיות:</b> flake8, bandit ✔️</li>
+    <li><b>בדיקות אבטחה:</b> safety ✔️</li>
+    <li><b>כיסוי קוד:</b> מעל 80% ✔️</li>
   </ul>
-  <h2>&#128269; מדדי איכות (וויזואליים)</h2>
-  <div class="label">כיסוי קוד: 85%</div>
-  <div class="bar" style="width: 85%;"></div>
-  <div class="label">עמידה ב-PEP8: 75%</div>
-  <div class="bar" style="width: 75%;"></div>
-  <div class="label">בדיקות שעברו: 100%</div>
-  <div class="bar" style="width: 100%; background-color: limegreen;"></div>
   <p><b>תאריך:</b> ${new Date().format("yyyy-MM-dd HH:mm")}</p>
 </body>
-</html>"""
-
+</html>
+"""
                     writeFile file: 'index.html', text: htmlReport
-                    sh 'sleep 300'
+                    sh 'sleep 10'  // אפשר להוריד או לקצר
                 }
             }
         }
@@ -132,7 +119,6 @@ pipeline {
                     integration_test_report.xml,
                     coverage.xml,
                     htmlcov/**,
-                    static/**,
                     index.html
                 ''', allowEmptyArchive: true
             }
@@ -141,18 +127,7 @@ pipeline {
 
     post {
         always {
-            echo "🎉 PIPELINE BUILD COMPLETE 🎉"
-            echo '''
-╔═══════════════════════════════════════════════╗
-║                 PIPELINE STATUS              ║
-║                                              ║
-║   ██████████████████████████████████████     ║
-║   █            SUCCESSFUL BUILD         █    ║
-║   ██████████████████████████████████████     ║
-║                                              ║
-║      Jenkins Pipeline - Full Build Report    ║
-╚═══════════════════════════════════════════════╝
-'''
+            echo "PIPELINE COMPLETE"
 
             writeFile file: 'pipeline_report.txt', text: '''
 ===========================
@@ -172,7 +147,7 @@ BUILD STEPS:
 [OK] Publish Artifacts
 
 ===========================
-Date: ${new Date().format("yyyy-MM-dd HH:mm")}
+Date: ${new Date().toString()}
 ===========================
 '''
 
